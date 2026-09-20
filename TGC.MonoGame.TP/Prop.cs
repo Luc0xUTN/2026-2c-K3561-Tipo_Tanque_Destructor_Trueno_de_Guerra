@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace TGC.MonoGame.TP;
 
+// Responsabilidad: Representa entidades que no se mueven por sus propios medios 
 public class Prop
 {
     private Vector3 _position; 

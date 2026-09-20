@@ -6,6 +6,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace TGC.MonoGame.TP;
 
+// Responsabilidad: Generar de forma procedural las árboles, rocas y otras cosas que se encuentran en el mapa
 public class Forest
 {
     private List<Prop> _props;

@@ -5,6 +5,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace TGC.MonoGame.TP;
 
+// Responsabilidad: Representar al terreno donde se va a situar la batalla 
 public class Terrain
 {
     private Color _color {get; set;}

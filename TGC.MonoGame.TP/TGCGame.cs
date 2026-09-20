@@ -64,7 +64,7 @@ public class TGCGame : Game
         int maxTanks = 5;
         
         Vector3 enemyPosition = new Vector3(0, 1, 100);
-        Vector3 alliesPosition = new Vector3(0, 0, -100);
+        Vector3 alliesPosition = new Vector3(0, 1, -100);
         Vector3 tanksOffset = new Vector3(10,0,0);
         Vector3 alliesScale = new Vector3(0.01f, 0.01f, 0.01f);
         Vector3 enemyScale = new Vector3(1f, 1f, 1f);

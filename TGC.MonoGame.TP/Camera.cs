@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Input;
 
 namespace TGC.MonoGame.TP;
 
+// Responsabilidad: Representar a las cámaras del juego
 public class Camera
 {
     private Matrix _view;
