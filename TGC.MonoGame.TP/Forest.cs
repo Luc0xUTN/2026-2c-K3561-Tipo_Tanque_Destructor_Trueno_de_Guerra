@@ -78,6 +78,7 @@ public class Forest
     public void LoadContent(ContentManager content, string contentFolder3D, string shaderRoute)
     {
         var treeModel = content.Load<Model>(contentFolder3D + "forest/Tree/Tree");
+        var effect = content.Load<Effect>(shaderRoute);
         List<Model> rockModels = new List<Model>();
         for (int i = 0; i < 4; i++)
         {
@@ -85,13 +86,13 @@ public class Forest
             rockModels.Add(rockModel);
         }
         
-        _trees.ForEach(tree => tree.LoadContent(content, treeModel, shaderRoute));
+        _trees.ForEach(tree => tree.LoadContent(treeModel, effect));
 
         var random = new Random();
         _rocks.ForEach(rock =>
         {
             int rockType = (int)random.NextInt64(rockModels.Count);
-            rock.LoadContent(content, rockModels[rockType], shaderRoute);
+            rock.LoadContent(rockModels[rockType], effect);
         });
 
     }
