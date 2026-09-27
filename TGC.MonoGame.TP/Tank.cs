@@ -1,29 +1,68 @@
+using System;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Content;
-using Microsoft.Xna.Framework.Graphics;
 
 namespace TGC.MonoGame.TP;
 
 // Responsabilidad: Representar a un tanque en sí 
 public class Tank : Entity
 {
-    private float _acceleration = 200f;
-    private float _speed = 0; 
+    private float _acceleration = 1000f;
+    private float _deceleration = 1500f;
+    private float _maxSpeed = 1000f;
+
+    private float _rotationSpeed = MathF.PI * 0.25f;
+
+    private int _speedingDirection = 0;
+    private float _currentSpeed = 0;
     
+    private int _rotationDirection = 0;
     
     public Tank(Vector3 position,Vector3 scale, Vector3 rotation, Color color) : base(position, scale, rotation, color )
     {
         
     }
     
-    public void Update(float elapsedTime)
+    public virtual void Update(float elapsedTime)
     {
-        _speed += elapsedTime * _acceleration;
-        _position += elapsedTime * _world.Forward * _speed;
-        
+
+        // Yaw
+        _rotation.X -= _rotationDirection * _rotationSpeed * elapsedTime; // Resta para que el positivo sea hacia las agujas del reloj
+        var pi2 = MathF.PI * 2;
+        if (_rotation.X > pi2)
+        {
+            _rotation.X -= pi2;
+        }
+
+
+        if (_speedingDirection != 0) // Está acelerando hacia adelante o atrás
+        {
+            _currentSpeed = MathF.MinMagnitude(
+                _currentSpeed + _acceleration * _speedingDirection * elapsedTime,
+                _maxSpeed * _speedingDirection
+            );
+        }
+
+        int movingDirection = Math.Sign(_currentSpeed);
+        float absSpeed = MathF.Abs(_currentSpeed);
+        if (_speedingDirection != movingDirection) // Está frenando o está desplazándose pero sin acelerar
+        {
+            _currentSpeed = MathF.Max(absSpeed - _deceleration * elapsedTime, 0) * movingDirection;
+        }
+
+        _position += _world.Forward * (_currentSpeed * elapsedTime);
+
         SetWorldMatrix();
     }
+
+    protected void Move(int direction)
+    {
+        _speedingDirection = direction;
+    }
     
+    protected void Rotate(int direction)
+    {
+        _rotationDirection = direction;
+    }
     
     protected override void DrawMeshes()
     {

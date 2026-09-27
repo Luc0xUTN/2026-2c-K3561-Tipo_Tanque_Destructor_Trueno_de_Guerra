@@ -68,7 +68,7 @@ public class TGCGame : Game
         _centerY = GraphicsDevice.Viewport.Height / 2;
         
         
-        _tank = new Tank(new Vector3(1,100,1), new  Vector3(0.01f, 0.01f,0.01f), new  Vector3(0,0,0), Color.Red);
+        _tank = new PlayerTank(new Vector3(1,100,1), new  Vector3(0.01f, 0.01f,0.01f), new  Vector3(0,0,0), Color.Red);
         _tank.Initialize();
         
         _terrain = new Terrain(ContentFolderEffects + "BasicShader", Color.Green);
