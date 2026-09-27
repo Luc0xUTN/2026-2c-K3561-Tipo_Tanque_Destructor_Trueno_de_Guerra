@@ -68,11 +68,21 @@ public class TGCGame : Game
         _centerY = GraphicsDevice.Viewport.Height / 2;
         
         
-        _tank = new PlayerTank(new Vector3(1,100,1), new  Vector3(0.01f, 0.01f,0.01f), new  Vector3(0,0,0), Color.Red);
+        // Y=10: por encima de cualquier altura que pueda generar el heightmap (rango
+        // ±4.5, ver Terrain.HeightRange), para no spawnear enterrado en una colina.
+        // Es un valor fijo temporal — cuando el tanque consulte Terrain.GetHeightAt
+        // en su propio (x,z) esto debería reemplazarse por la altura real del terreno.
+        _tank = new PlayerTank(new Vector3(1,10,1), new  Vector3(0.01f, 0.01f,0.01f), new  Vector3(0,0,0), Color.Red);
         _tank.Initialize();
         
+        // TODO: seed temporal acá. Por diseño (ver progress/05-world-generation-pipeline.md
+        // del repo de contexto) esto lo tiene que terminar decidiendo Battlefield, que
+        // todavía es un stub vacío. Mientras tanto queda fija acá para poder generar el
+        // terreno y tener un "mapa tipo" reproducible para debug.
+        const int worldSeed = 12345;
+
         _terrain = new Terrain(ContentFolderEffects + "BasicShader", Color.Green);
-        _terrain.Initialize(GraphicsDevice, mapSize);
+        _terrain.Initialize(GraphicsDevice, mapSize, worldSeed);
 
         _forest = new Forest();
         _forest.Initialize(new Vector2(mapSize, mapSize));
