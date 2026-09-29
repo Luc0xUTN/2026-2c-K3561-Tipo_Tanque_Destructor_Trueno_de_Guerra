@@ -61,3 +61,6 @@ ehthumbs_vista.db
 .idea/
 *.iml
 *.ipr
+
+# Imagen generada por Terrain.ExportHeightmapDebugImage (debug local, no es un asset del juego)
+heightmap_debug.png

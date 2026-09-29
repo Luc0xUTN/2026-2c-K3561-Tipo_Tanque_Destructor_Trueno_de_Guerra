@@ -1,11 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Numerics;
 using TGC.MonoGame.TP.Collisions;
+using TGC.MonoGame.TP.Cameras;
+using TGC.MonoGame.TP.Tanks.TurretCanonMovementHandlers;
 
 namespace TGC.MonoGame.TP;
 
@@ -23,27 +24,29 @@ public class TGCGame : Game
     public const string ContentFolderSpriteFonts = "SpriteFonts/";
     public const string ContentFolderTextures = "Textures/";
     
-    private readonly GraphicsDeviceManager _graphics;
+    private static readonly bool DebugIsometricCamera = false;
 
-    private Effect _effect;
-    private Model _model;
+    private readonly GraphicsDeviceManager _graphics;
+    
     private Matrix _projection;
-    private float _rotation;
-    private SpriteBatch _spriteBatch;
-    private Matrix _view;
-    private Matrix _world;
 
     private Terrain _terrain;
     private Forest _forest;
+    private Battlefield _battlefield;
 
     private int _centerX;
     private int _centerY;
     
+    private float _sensitivity = 0.005f;
+
+    private readonly Keys _keyFreeLook = Keys.C;
 
     private Tank _tank;
     private Tank _enemyTank;
-    
+
     private BaseCamera _camera;
+
+    private TurretCanonMovementHandler _turretCanonMovementHandler;
     
     /// <summary>
     ///     Constructor del juego.
@@ -55,12 +58,12 @@ public class TGCGame : Game
 
         _graphics.PreferredBackBufferWidth = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width - 100;
         _graphics.PreferredBackBufferHeight = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height - 100;
-
+        
         // Para que el juego sea pantalla completa se puede usar Graphics IsFullScreen.
         // Carpeta raiz donde va a estar toda la Media.
         Content.RootDirectory = "Content";
         // Hace que el mouse sea visible.
-        IsMouseVisible = true;
+        IsMouseVisible = false;
     }
 
     /// <summary>
@@ -73,22 +76,21 @@ public class TGCGame : Game
         _centerX = GraphicsDevice.Viewport.Width / 2;
         _centerY = GraphicsDevice.Viewport.Height / 2;
         
-        
-        // Y=10: por encima de cualquier altura que pueda generar el heightmap (rango
-        // ±4.5, ver Terrain.HeightRange), para no spawnear enterrado en una colina.
-        // Es un valor fijo temporal — cuando el tanque consulte Terrain.GetHeightAt
-        // en su propio (x,z) esto debería reemplazarse por la altura real del terreno.
-        _tank = new PlayerTank(new Vector3(1,10,1), Vector3.One, new  Vector3(0,0,0), Color.Red);
+        _battlefield = new Battlefield(ContentFolderEffects + "BasicShader", Color.Green);
+        _battlefield.Initialize(GraphicsDevice, mapSize);
+
+        // El jugador siempre spawnea en el spawn A, sobre la altura real del
+        // terreno en ese punto (Battlefield.GetHeightAt).
+        var spawnPosition = _battlefield.GetSpawnA();
+        var spawnHeight = _battlefield.GetHeightAt(spawnPosition.X, spawnPosition.Y);
+
+        // La torreta y el cañón se apuntan con el mouse, que es lo que mueve la cámara.
+        _turretCanonMovementHandler = new TurretCanonCameraAimHandler();
+        _tank = new PlayerTank(new Vector3(spawnPosition.X, spawnHeight, spawnPosition.Y), new  Vector3(0.01f, 0.01f,0.01f), new  Vector3(0,0,0), Color.Red);
         _tank.Initialize();
 
         _enemyTank = new Tank(new Vector3(1,10,1), Vector3.One, new  Vector3(0,0,0), Color.Red);
         _enemyTank.Initialize();
-        
-        // TODO: seed temporal acá. Por diseño (ver progress/05-world-generation-pipeline.md
-        // del repo de contexto) esto lo tiene que terminar decidiendo Battlefield, que
-        // todavía es un stub vacío. Mientras tanto queda fija acá para poder generar el
-        // terreno y tener un "mapa tipo" reproducible para debug.
-        const int worldSeed = 12345;
 
         // Apago el backface culling.
         // Esto se hace por un problema en el diseno del modelo del logo de la materia.
@@ -99,11 +101,19 @@ public class TGCGame : Game
         // Seria hasta aca.
 
         // Configuramos nuestras matrices de la escena.
-        _world = Matrix.Identity;
-        _view = Matrix.CreateLookAt(Vector3.UnitZ * 150, Vector3.Zero, Vector3.Up);
-        _projection =
-            Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 1, 250);
 
+        _camera = DebugIsometricCamera
+            ? new IsometricCamera(new Vector3(200, 220, 200), Vector3.Zero, Vector3.Up)
+            : new OrbitalCamera(_tank, 20, _centerX, _centerY, _sensitivity);
+        _camera.Initialize();
+        
+        _projection =
+            Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 1, (int) Math.Ceiling(Math.Sqrt(Math.Pow(mapSize, 2)  + Math.Pow(mapSize, 2))));
+
+        Mouse.SetPosition(_centerX,_centerY);
+
+
+        // Gizmos
         DebugManager.Add(
             new ColliderGizmo(GraphicsDevice, _tank.Collider, true)
         );
@@ -111,7 +121,6 @@ public class TGCGame : Game
             new ColliderGizmo(GraphicsDevice, _enemyTank.Collider, true)
         );
 
-        Mouse.SetPosition(_centerX,_centerY);
         base.Initialize();
     }
 
@@ -122,15 +131,13 @@ public class TGCGame : Game
     /// </summary>
     protected override void LoadContent()
     {
-        _terrain.LoadContent(Content);
-        _forest.LoadContent(Content, ContentFolder3D, ContentFolderEffects + "BasicShader");
-        
+        _battlefield.LoadContent(Content, ContentFolder3D);
         Model panzer = Content.Load<Model>(ContentFolder3D + "tanks/Panzer/Panzer");
         Model t90 = Content.Load<Model>( ContentFolder3D + "tanks/T90/T90");
-        Effect effect = Content.Load<Effect>(ContentFolderEffects + "BasicShader");        
-        
-        _tank.LoadContent(panzer, effect);
-        _enemyTank.LoadContent(panzer, effect);
+        Effect effect = Content.Load<Effect>(ContentFolderEffects + "BasicShader");
+
+        _tank.LoadContent(panzer, effect, "Turret", "Cannon");
+        _enemyTank.LoadContent(panzer, effect, "Turret", "Cannon");
         
         base.LoadContent();
     }
@@ -143,24 +150,41 @@ public class TGCGame : Game
     protected override void Update(GameTime gameTime)
     {
         // Aca deberiamos poner toda la logica de actualizacion del juego.
-
+        
         // Capturar Input teclado
         if (Keyboard.GetState().IsKeyDown(Keys.Escape))
         {
             //Salgo del juego.
             Exit();
         }
-        var elapsedTime = Convert.ToSingle(gameTime.ElapsedGameTime.TotalSeconds);
         
-       
-       _tank.Update(elapsedTime);
-       
-       _camera.Update(Keyboard.GetState(), Mouse.GetState(),  elapsedTime);
-       
-       Mouse.SetPosition(_centerX,_centerY);
+        var elapsedTime = Convert.ToSingle(gameTime.ElapsedGameTime.TotalSeconds);
 
-       Debug.Print(CollisionDetector.CheckCollision(_tank.Collider, _enemyTank.Collider).ToString());
-       base.Update(gameTime);
+        KeyboardState keyboardState = Keyboard.GetState();
+        MouseState mouseState = Mouse.GetState();
+
+        // Mantener esta tecla equivale al Free Look de War Thunder: el mouse mueve la cámara
+        // y la torreta y el cañón se quedan clavados en el último punto apuntado.
+        bool freeLook = keyboardState.IsKeyDown(_keyFreeLook);
+
+        // La cámara es la única que consume el mouse.
+        _camera.IsFreeLook = freeLook;
+        _camera.Update(keyboardState, mouseState, elapsedTime);
+
+        // La torreta y el cañón siguen a la cámara, salvo durante el free look, en cuyo caso quedan
+        // donde estaban y slewan hasta la nueva puntería en el momento de soltarla.
+        _turretCanonMovementHandler.Update(
+            _tank.GetTurret(),
+            _tank.GetCanon(),
+            _camera.Yaw - _tank.GetHullYaw(),
+            _camera.Pitch,
+            freeLook
+        );
+
+        _tank.Update(elapsedTime);
+        
+        Mouse.SetPosition(_centerX,_centerY);
+        base.Update(gameTime);
     }
 
     /// <summary>
@@ -169,14 +193,12 @@ public class TGCGame : Game
     /// </summary>
     protected override void Draw(GameTime gameTime)
     {
-        // Aca deberiamos poner toda la logia de renderizado del juego.
         GraphicsDevice.Clear(Color.Black);
         // GraphicsDevice.DepthStencilState = DepthStencilState.Default;
-
+        
         var view = _camera.GetView();
         
-        _terrain.Draw(GraphicsDevice, view, _projection);
-        _forest.Draw(GraphicsDevice, view, _projection);
+        _battlefield.Draw(GraphicsDevice, view, _projection);
         _tank.Draw(GraphicsDevice, view, _projection);
         _enemyTank.Draw(GraphicsDevice, view, _projection);
 
