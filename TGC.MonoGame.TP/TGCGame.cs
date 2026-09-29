@@ -2,6 +2,10 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Numerics;
+using TGC.MonoGame.TP.Collisions;
 
 namespace TGC.MonoGame.TP;
 
@@ -29,6 +33,18 @@ public class TGCGame : Game
     private Matrix _view;
     private Matrix _world;
 
+    private Terrain _terrain;
+    private Forest _forest;
+
+    private int _centerX;
+    private int _centerY;
+    
+
+    private Tank _tank;
+    private Tank _enemyTank;
+    
+    private BaseCamera _camera;
+    
     /// <summary>
     ///     Constructor del juego.
     /// </summary>
@@ -53,7 +69,26 @@ public class TGCGame : Game
     /// </summary>
     protected override void Initialize()
     {
-        // La logica de inicializacion que no depende del contenido se recomienda poner en este metodo.
+        float mapSize = 300f;
+        _centerX = GraphicsDevice.Viewport.Width / 2;
+        _centerY = GraphicsDevice.Viewport.Height / 2;
+        
+        
+        // Y=10: por encima de cualquier altura que pueda generar el heightmap (rango
+        // ±4.5, ver Terrain.HeightRange), para no spawnear enterrado en una colina.
+        // Es un valor fijo temporal — cuando el tanque consulte Terrain.GetHeightAt
+        // en su propio (x,z) esto debería reemplazarse por la altura real del terreno.
+        _tank = new PlayerTank(new Vector3(1,10,1), Vector3.One, new  Vector3(0,0,0), Color.Red);
+        _tank.Initialize();
+
+        _enemyTank = new Tank(new Vector3(1,10,1), Vector3.One, new  Vector3(0,0,0), Color.Red);
+        _enemyTank.Initialize();
+        
+        // TODO: seed temporal acá. Por diseño (ver progress/05-world-generation-pipeline.md
+        // del repo de contexto) esto lo tiene que terminar decidiendo Battlefield, que
+        // todavía es un stub vacío. Mientras tanto queda fija acá para poder generar el
+        // terreno y tener un "mapa tipo" reproducible para debug.
+        const int worldSeed = 12345;
 
         // Apago el backface culling.
         // Esto se hace por un problema en el diseno del modelo del logo de la materia.
@@ -69,6 +104,14 @@ public class TGCGame : Game
         _projection =
             Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 1, 250);
 
+        DebugManager.Add(
+            new ColliderGizmo(GraphicsDevice, _tank.Collider, true)
+        );
+        DebugManager.Add(
+            new ColliderGizmo(GraphicsDevice, _enemyTank.Collider, true)
+        );
+
+        Mouse.SetPosition(_centerX,_centerY);
         base.Initialize();
     }
 
@@ -79,27 +122,16 @@ public class TGCGame : Game
     /// </summary>
     protected override void LoadContent()
     {
-        // Aca es donde deberiamos cargar todos los contenido necesarios antes de iniciar el juego.
-        _spriteBatch = new SpriteBatch(GraphicsDevice);
-
-        // Cargo el modelo del logo.
-        _model = Content.Load<Model>(ContentFolder3D + "tgc-logo/tgc-logo");
-
-        // Cargo un efecto basico propio declarado en el Content pipeline.
-        // En el juego no pueden usar BasicEffect de MG, deben usar siempre efectos propios.
-        _effect = Content.Load<Effect>(ContentFolderEffects + "BasicShader");
-
-        // Asigno el efecto que cargue a cada parte del mesh.
-        // Un modelo puede tener mas de 1 mesh internamente.
-        foreach (var mesh in _model.Meshes)
-        {
-            // Un mesh puede tener mas de 1 mesh part (cada 1 puede tener su propio efecto).
-            foreach (var meshPart in mesh.MeshParts)
-            {
-                meshPart.Effect = _effect;
-            }
-        }
-
+        _terrain.LoadContent(Content);
+        _forest.LoadContent(Content, ContentFolder3D, ContentFolderEffects + "BasicShader");
+        
+        Model panzer = Content.Load<Model>(ContentFolder3D + "tanks/Panzer/Panzer");
+        Model t90 = Content.Load<Model>( ContentFolder3D + "tanks/T90/T90");
+        Effect effect = Content.Load<Effect>(ContentFolderEffects + "BasicShader");        
+        
+        _tank.LoadContent(panzer, effect);
+        _enemyTank.LoadContent(panzer, effect);
+        
         base.LoadContent();
     }
 
@@ -118,13 +150,17 @@ public class TGCGame : Game
             //Salgo del juego.
             Exit();
         }
+        var elapsedTime = Convert.ToSingle(gameTime.ElapsedGameTime.TotalSeconds);
+        
+       
+       _tank.Update(elapsedTime);
+       
+       _camera.Update(Keyboard.GetState(), Mouse.GetState(),  elapsedTime);
+       
+       Mouse.SetPosition(_centerX,_centerY);
 
-        // Basado en el tiempo que paso se va generando una rotacion.
-        _rotation += Convert.ToSingle(gameTime.ElapsedGameTime.TotalSeconds);
-
-        _world = Matrix.CreateRotationY(_rotation);
-
-        base.Update(gameTime);
+       Debug.Print(CollisionDetector.CheckCollision(_tank.Collider, _enemyTank.Collider).ToString());
+       base.Update(gameTime);
     }
 
     /// <summary>
@@ -135,17 +171,16 @@ public class TGCGame : Game
     {
         // Aca deberiamos poner toda la logia de renderizado del juego.
         GraphicsDevice.Clear(Color.Black);
+        // GraphicsDevice.DepthStencilState = DepthStencilState.Default;
 
-        // Para dibujar le modelo necesitamos pasarle informacion que el efecto esta esperando.
-        _effect.Parameters["View"].SetValue(_view);
-        _effect.Parameters["Projection"].SetValue(_projection);
-        _effect.Parameters["DiffuseColor"].SetValue(Color.DarkBlue.ToVector3());
+        var view = _camera.GetView();
+        
+        _terrain.Draw(GraphicsDevice, view, _projection);
+        _forest.Draw(GraphicsDevice, view, _projection);
+        _tank.Draw(GraphicsDevice, view, _projection);
+        _enemyTank.Draw(GraphicsDevice, view, _projection);
 
-        foreach (var mesh in _model.Meshes)
-        {
-            _effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * _world);
-            mesh.Draw();
-        }
+        DebugManager.Draw(GraphicsDevice, view, _projection);
     }
 
     /// <summary>
