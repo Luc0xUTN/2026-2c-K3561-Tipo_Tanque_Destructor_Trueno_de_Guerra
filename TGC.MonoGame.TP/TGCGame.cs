@@ -5,7 +5,6 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using TGC.MonoGame.TP.Cameras;
-using Vector2 = Microsoft.Xna.Framework.Vector2;
 using Vector3 = Microsoft.Xna.Framework.Vector3;
 
 namespace TGC.MonoGame.TP;
@@ -23,13 +22,19 @@ public class TGCGame : Game
     public const string ContentFolderSounds = "Sounds/";
     public const string ContentFolderSpriteFonts = "SpriteFonts/";
     public const string ContentFolderTextures = "Textures/";
-    
+
+    // Debug: poner en true para reemplazar la cámara normal del jugador por una
+    // vista isométrica fija desde arriba de todo el mapa — sirve para revisar a
+    // ojo la separación entre los 3 carriles y los claros (ver repo de contexto,
+    // progress/07-lane-generation.md). Con esto activo no hay control de cámara
+    // por mouse; usar Arriba/Abajo para acercarse o alejarse (ver IsometricCamera).
+    private static readonly bool DebugIsometricCamera = false;
+
     private readonly GraphicsDeviceManager _graphics;
     
     private Matrix _projection;
 
-    private Terrain _terrain;
-    private Forest _forest;
+    private Battlefield _battlefield;
 
     private int _centerX;
     private int _centerY;
@@ -68,25 +73,16 @@ public class TGCGame : Game
         _centerY = GraphicsDevice.Viewport.Height / 2;
         
         
-        // Y=10: por encima de cualquier altura que pueda generar el heightmap (rango
-        // ±4.5, ver Terrain.HeightRange), para no spawnear enterrado en una colina.
-        // Es un valor fijo temporal — cuando el tanque consulte Terrain.GetHeightAt
-        // en su propio (x,z) esto debería reemplazarse por la altura real del terreno.
-        _tank = new PlayerTank(new Vector3(1,10,1), new  Vector3(0.01f, 0.01f,0.01f), new  Vector3(0,0,0), Color.Red);
+        _battlefield = new Battlefield(ContentFolderEffects + "BasicShader", Color.Green);
+        _battlefield.Initialize(GraphicsDevice, mapSize);
+
+        // El jugador siempre spawnea en el spawn A, sobre la altura real del
+        // terreno en ese punto (Battlefield.GetHeightAt).
+        var spawnPosition = _battlefield.GetSpawnA();
+        var spawnHeight = _battlefield.GetHeightAt(spawnPosition.X, spawnPosition.Y);
+        _tank = new PlayerTank(new Vector3(spawnPosition.X, spawnHeight, spawnPosition.Y), new  Vector3(0.01f, 0.01f,0.01f), new  Vector3(0,0,0), Color.Red);
         _tank.Initialize();
-        
-        // TODO: seed temporal acá. Por diseño (ver progress/05-world-generation-pipeline.md
-        // del repo de contexto) esto lo tiene que terminar decidiendo Battlefield, que
-        // todavía es un stub vacío. Mientras tanto queda fija acá para poder generar el
-        // terreno y tener un "mapa tipo" reproducible para debug.
-        const int worldSeed = 12345;
 
-        _terrain = new Terrain(ContentFolderEffects + "BasicShader", Color.Green);
-        _terrain.Initialize(GraphicsDevice, mapSize, worldSeed);
-
-        _forest = new Forest();
-        _forest.Initialize(new Vector2(mapSize, mapSize));
-        
         // Apago el backface culling.
         // Esto se hace por un problema en el diseno del modelo del logo de la materia.
         // Una vez que empiecen su juego, esto no es mas necesario y lo pueden sacar.
@@ -97,7 +93,9 @@ public class TGCGame : Game
 
         // Configuramos nuestras matrices de la escena.
 
-        _camera = new OrbitalCamera(_tank, 20,0,0, _centerX, _centerY );
+        _camera = DebugIsometricCamera
+            ? new IsometricCamera(new Vector3(200, 220, 200), Vector3.Zero, Vector3.Up)
+            : new OrbitalCamera(_tank, 20, 0, 0, _centerX, _centerY);
         _camera.Initialize();
         
         _projection =
@@ -115,9 +113,8 @@ public class TGCGame : Game
     /// </summary>
     protected override void LoadContent()
     {
-        _terrain.LoadContent(Content);
-        _forest.LoadContent(Content, ContentFolder3D, ContentFolderEffects + "BasicShader");
-        
+        _battlefield.LoadContent(Content, ContentFolder3D);
+
         Model panzer = Content.Load<Model>(ContentFolder3D + "tanks/Panzer/Panzer");
         Model t90 = Content.Load<Model>( ContentFolder3D + "tanks/T90/T90");
         Effect effect = Content.Load<Effect>(ContentFolderEffects + "BasicShader");        
@@ -163,8 +160,7 @@ public class TGCGame : Game
         GraphicsDevice.Clear(Color.Black);
         // GraphicsDevice.DepthStencilState = DepthStencilState.Default;
         
-        _terrain.Draw(GraphicsDevice, _camera.GetView(), _projection);
-        _forest.Draw(GraphicsDevice, _camera.GetView(), _projection);
+        _battlefield.Draw(GraphicsDevice, _camera.GetView(), _projection);
         _tank.Draw(GraphicsDevice, _camera.GetView(), _projection);
     }
 
