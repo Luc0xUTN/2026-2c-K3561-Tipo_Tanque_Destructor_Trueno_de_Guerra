@@ -5,6 +5,8 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using TGC.MonoGame.TP.Cameras;
+using TGC.MonoGame.TP.Tanks.TurretCanonMovementHandlers;
+using Vector2 = Microsoft.Xna.Framework.Vector2;
 using Vector3 = Microsoft.Xna.Framework.Vector3;
 
 namespace TGC.MonoGame.TP;
@@ -22,12 +24,7 @@ public class TGCGame : Game
     public const string ContentFolderSounds = "Sounds/";
     public const string ContentFolderSpriteFonts = "SpriteFonts/";
     public const string ContentFolderTextures = "Textures/";
-
-    // Debug: poner en true para reemplazar la cámara normal del jugador por una
-    // vista isométrica fija desde arriba de todo el mapa — sirve para revisar a
-    // ojo la separación entre los 3 carriles y los claros (ver repo de contexto,
-    // progress/07-lane-generation.md). Con esto activo no hay control de cámara
-    // por mouse; usar Arriba/Abajo para acercarse o alejarse (ver IsometricCamera).
+    
     private static readonly bool DebugIsometricCamera = false;
 
     private readonly GraphicsDeviceManager _graphics;
@@ -39,6 +36,7 @@ public class TGCGame : Game
     private int _centerX;
     private int _centerY;
     
+    private float _sensitivity = 0.005f;
 
     private Tank _tank;
     
@@ -80,7 +78,9 @@ public class TGCGame : Game
         // terreno en ese punto (Battlefield.GetHeightAt).
         var spawnPosition = _battlefield.GetSpawnA();
         var spawnHeight = _battlefield.GetHeightAt(spawnPosition.X, spawnPosition.Y);
-        _tank = new PlayerTank(new Vector3(spawnPosition.X, spawnHeight, spawnPosition.Y), new  Vector3(0.01f, 0.01f,0.01f), new  Vector3(0,0,0), Color.Red);
+
+        TurretCanonMovementHandler turretCanonMovementHandler = new TurretCanonKeyboardHandler(); 
+        _tank = new PlayerTank(new Vector3(spawnPosition.X, spawnHeight, spawnPosition.Y), new  Vector3(0.01f, 0.01f,0.01f), new  Vector3(0,0,0), Color.Red, turretCanonMovementHandler);
         _tank.Initialize();
 
         // Apago el backface culling.
@@ -95,7 +95,7 @@ public class TGCGame : Game
 
         _camera = DebugIsometricCamera
             ? new IsometricCamera(new Vector3(200, 220, 200), Vector3.Zero, Vector3.Up)
-            : new OrbitalCamera(_tank, 20, 0, 0, _centerX, _centerY);
+            : new OrbitalCamera(_tank, 20, 0, 0, _centerX, _centerY, _sensitivity);
         _camera.Initialize();
         
         _projection =
@@ -119,7 +119,7 @@ public class TGCGame : Game
         Model t90 = Content.Load<Model>( ContentFolder3D + "tanks/T90/T90");
         Effect effect = Content.Load<Effect>(ContentFolderEffects + "BasicShader");        
         
-        _tank.LoadContent(panzer, effect);
+        _tank.LoadContent(panzer, effect, "Turret", "Cannon");
         
         base.LoadContent();
     }

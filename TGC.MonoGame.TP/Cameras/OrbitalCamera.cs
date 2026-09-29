@@ -12,12 +12,12 @@ public class OrbitalCamera : BaseCamera
     private float _yaw; 
     private float _pitch;
 
-    private float _sensitivity = 0.005f;
+    private float _sensitivity;
 
     private readonly float _centerX; 
     private readonly float _centerY;
     
-    public OrbitalCamera(Entity target, float radius, float yaw, float pitch, float centerX, float centerY) 
+    public OrbitalCamera(Entity target, float radius, float yaw, float pitch, float centerX, float centerY, float sensitivity) 
     {   
         _target = target;
         _yaw = yaw;
@@ -25,6 +25,7 @@ public class OrbitalCamera : BaseCamera
         _radius = radius;
         _centerX = centerX; 
         _centerY = centerY;
+        _sensitivity = sensitivity;
     }
 
     public override void Initialize()

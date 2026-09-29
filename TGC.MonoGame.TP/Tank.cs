@@ -1,5 +1,9 @@
 using System;
+using System.Reflection.Metadata.Ecma335;
+using BepuPhysics;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using TGC.MonoGame.TP.Tanks;
 
 namespace TGC.MonoGame.TP;
 
@@ -16,10 +20,34 @@ public class Tank : Entity
     private float _currentSpeed = 0;
     
     private int _rotationDirection = 0;
+
+    private Matrix[] _absoluteWorldsMatrix;
+
+    protected Turret _turret;
+    protected Canon _canon; 
     
     public Tank(Vector3 position,Vector3 scale, Vector3 rotation, Color color) : base(position, scale, rotation, color )
     {
         
+    }
+
+    public void LoadContent(Model model,  Effect effect, string turretBoneName, string canonBoneName)
+    {
+        base.LoadContent(model, effect);
+
+        _absoluteWorldsMatrix = new Matrix[model.Bones.Count]; 
+        
+        foreach (var bone in _model.Bones)
+        {
+            if (bone.Name == turretBoneName)
+            {
+                _turret = new Turret(bone);
+            }
+            else if (bone.Name == canonBoneName)
+            {
+                _canon = new Canon(bone);
+            }
+        }   
     }
     
     public virtual void Update(float elapsedTime)
@@ -52,6 +80,9 @@ public class Tank : Entity
         _position += _world.Forward * (_currentSpeed * elapsedTime);
 
         SetWorldMatrix();
+        
+        _turret.Update(elapsedTime);
+        _canon.Update(elapsedTime);
     }
 
     protected void Move(int direction)
@@ -66,9 +97,10 @@ public class Tank : Entity
     
     protected override void DrawMeshes()
     {
+        _model.CopyAbsoluteBoneTransformsTo(_absoluteWorldsMatrix); 
         foreach (var mesh in _model.Meshes)
         {
-            _effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * _world);
+            _effect.Parameters["World"].SetValue(_absoluteWorldsMatrix[mesh.ParentBone.Index] * _world);
             mesh.Draw();
         }
     }
