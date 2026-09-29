@@ -1,23 +1,18 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
-using TGC.MonoGame.TP.Tanks.TurretCanonMovementHandlers;
 
 namespace TGC.MonoGame.TP;
 
 // Responsabilidad: Representar a un tanque jugador
 public class PlayerTank: Tank
 {
-    private TurretCanonMovementHandler _turretCanonMovementHandler = new TurretCanonKeyboardHandler();
-    
-
     private Keys _keyForward = Keys.W;
     private Keys _keyBackward = Keys.S;
     private Keys _keyRotateLeft = Keys.A;
     private Keys _keyRotateRight = Keys.D;
 
-    public PlayerTank(Vector3 position, Vector3 scale, Vector3 rotation, Color color, TurretCanonMovementHandler turretCanonMovementHandler) : base(position, scale, rotation, color)
+    public PlayerTank(Vector3 position, Vector3 scale, Vector3 rotation, Color color) : base(position, scale, rotation, color)
     {
-        _turretCanonMovementHandler =  turretCanonMovementHandler;
     }
     
     
@@ -39,8 +34,6 @@ public class PlayerTank: Tank
             else
                 Move(0);
         }
-        
-        _turretCanonMovementHandler.Update(_turret, _canon);
 
         base.Update(elapsedTime);
     }

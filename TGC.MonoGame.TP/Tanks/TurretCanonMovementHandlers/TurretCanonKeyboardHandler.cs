@@ -25,8 +25,13 @@ public class TurretCanonKeyboardHandler : TurretCanonMovementHandler
         
     }
 
-    public void Update( Turret turret, Canon canon)
+    public void Update( Turret turret, Canon canon, float turretYaw, float aimPitch, bool freeLook)
     {
+        if (freeLook)
+        {
+            return;
+        }
+
         KeyboardState keyboardState = Keyboard.GetState();
         
         if (keyboardState.IsKeyDown(_keyRotateTurretLeft))

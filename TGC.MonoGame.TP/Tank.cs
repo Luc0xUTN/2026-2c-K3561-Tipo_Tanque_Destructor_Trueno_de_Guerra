@@ -49,7 +49,26 @@ public class Tank : Entity
             }
         }   
     }
+
+    public Turret GetTurret()
+    {
+        return _turret;
+    }
+
+    public Canon GetCanon()
+    {
+        return _canon;
+    }
+
+    /// <summary>
+    ///     Yaw del casco en espacio de mundo. La torreta gira en relación a este valor.
+    /// </summary>
+    public float GetHullYaw()
+    {
+        return _rotation.X;
+    }
     
+
     public virtual void Update(float elapsedTime)
     {
 

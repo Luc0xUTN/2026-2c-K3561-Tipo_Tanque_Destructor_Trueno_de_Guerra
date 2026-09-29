@@ -38,9 +38,13 @@ public class TGCGame : Game
     
     private float _sensitivity = 0.005f;
 
+    private readonly Keys _keyFreeLook = Keys.C;
+
     private Tank _tank;
-    
+
     private BaseCamera _camera;
+
+    private TurretCanonMovementHandler _turretCanonMovementHandler;
     
     /// <summary>
     ///     Constructor del juego.
@@ -79,8 +83,9 @@ public class TGCGame : Game
         var spawnPosition = _battlefield.GetSpawnA();
         var spawnHeight = _battlefield.GetHeightAt(spawnPosition.X, spawnPosition.Y);
 
-        TurretCanonMovementHandler turretCanonMovementHandler = new TurretCanonKeyboardHandler(); 
-        _tank = new PlayerTank(new Vector3(spawnPosition.X, spawnHeight, spawnPosition.Y), new  Vector3(0.01f, 0.01f,0.01f), new  Vector3(0,0,0), Color.Red, turretCanonMovementHandler);
+        // La torreta y el cañón se apuntan con el mouse, que es lo que mueve la cámara.
+        _turretCanonMovementHandler = new TurretCanonCameraAimHandler();
+        _tank = new PlayerTank(new Vector3(spawnPosition.X, spawnHeight, spawnPosition.Y), new  Vector3(0.01f, 0.01f,0.01f), new  Vector3(0,0,0), Color.Red);
         _tank.Initialize();
 
         // Apago el backface culling.
@@ -95,7 +100,7 @@ public class TGCGame : Game
 
         _camera = DebugIsometricCamera
             ? new IsometricCamera(new Vector3(200, 220, 200), Vector3.Zero, Vector3.Up)
-            : new OrbitalCamera(_tank, 20, 0, 0, _centerX, _centerY, _sensitivity);
+            : new OrbitalCamera(_tank, 20, _centerX, _centerY, _sensitivity);
         _camera.Initialize();
         
         _projection =
@@ -141,14 +146,32 @@ public class TGCGame : Game
         }
         
         var elapsedTime = Convert.ToSingle(gameTime.ElapsedGameTime.TotalSeconds);
+
+        KeyboardState keyboardState = Keyboard.GetState();
+        MouseState mouseState = Mouse.GetState();
+
+        // Mantener esta tecla equivale al Free Look de War Thunder: el mouse mueve la cámara
+        // y la torreta y el cañón se quedan clavados en el último punto apuntado.
+        bool freeLook = keyboardState.IsKeyDown(_keyFreeLook);
+
+        // La cámara es la única que consume el mouse.
+        _camera.IsFreeLook = freeLook;
+        _camera.Update(keyboardState, mouseState, elapsedTime);
+
+        // La torreta y el cañón siguen a la cámara, salvo durante el free look, en cuyo caso quedan
+        // donde estaban y slewan hasta la nueva puntería en el momento de soltarla.
+        _turretCanonMovementHandler.Update(
+            _tank.GetTurret(),
+            _tank.GetCanon(),
+            _camera.Yaw - _tank.GetHullYaw(),
+            _camera.Pitch,
+            freeLook
+        );
+
+        _tank.Update(elapsedTime);
         
-       
-       _tank.Update(elapsedTime);
-       
-       _camera.Update(Keyboard.GetState(), Mouse.GetState(),  elapsedTime);
-       
-       Mouse.SetPosition(_centerX,_centerY);
-       base.Update(gameTime);
+        Mouse.SetPosition(_centerX,_centerY);
+        base.Update(gameTime);
     }
 
     /// <summary>
