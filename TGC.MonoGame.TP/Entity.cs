@@ -20,10 +20,10 @@ public abstract class Entity
     protected Model  _model;
     protected Effect _effect;
 
-    public Vector3 GetPosition()
-    {
-        return _position;
-    }
+    public Vector3 GetPosition() => _position;
+    public Vector3 GetScale() => _scale;
+    public Vector3 GetRotation() => _rotation;
+    public Matrix GetWorld() => _world;
     
     public Entity(Vector3 position, Vector3 scale, Vector3 rotation, Color color)
     {

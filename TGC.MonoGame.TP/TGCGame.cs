@@ -30,8 +30,6 @@ public class TGCGame : Game
     
     private Matrix _projection;
 
-    private Terrain _terrain;
-    private Forest _forest;
     private Battlefield _battlefield;
 
     private int _centerX;
@@ -86,7 +84,7 @@ public class TGCGame : Game
 
         // La torreta y el cañón se apuntan con el mouse, que es lo que mueve la cámara.
         _turretCanonMovementHandler = new TurretCanonCameraAimHandler();
-        _tank = new PlayerTank(new Vector3(spawnPosition.X, spawnHeight, spawnPosition.Y), new  Vector3(0.01f, 0.01f,0.01f), new  Vector3(0,0,0), Color.Red);
+        _tank = new PlayerTank(new Vector3(spawnPosition.X, spawnHeight, spawnPosition.Y), Vector3.One, new Vector3(0,0,0), Color.Red);
         _tank.Initialize();
 
         _enemyTank = new Tank(new Vector3(1,10,1), Vector3.One, new  Vector3(0,0,0), Color.Red);
