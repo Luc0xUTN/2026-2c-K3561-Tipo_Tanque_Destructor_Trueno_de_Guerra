@@ -1,14 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Numerics;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using System.Diagnostics;
+using TGC.MonoGame.TP.Collisions;
 using TGC.MonoGame.TP.Cameras;
 using TGC.MonoGame.TP.Tanks.TurretCanonMovementHandlers;
-using Vector2 = Microsoft.Xna.Framework.Vector2;
-using Vector3 = Microsoft.Xna.Framework.Vector3;
+using System.IO;
 
 namespace TGC.MonoGame.TP;
 
@@ -29,6 +29,9 @@ public class TGCGame : Game
     private static readonly bool DebugIsometricCamera = false;
 
     private readonly GraphicsDeviceManager _graphics;
+    private PhysicsSystem _physicsSystem;
+
+    private bool _drawColliders = false;
     
     private Matrix _projection;
 
@@ -43,7 +46,6 @@ public class TGCGame : Game
 
     private Tank _tank;
     private List<EnemyTank> _enemyTanks;
-
     private BaseCamera _camera;
 
     private TurretCanonMovementHandler _turretCanonMovementHandler;
@@ -64,6 +66,7 @@ public class TGCGame : Game
         Content.RootDirectory = "Content";
         // Hace que el mouse sea visible.
         IsMouseVisible = false;
+
     }
 
     /// <summary>
@@ -72,13 +75,17 @@ public class TGCGame : Game
     /// </summary>
     protected override void Initialize()
     {
+        if (_drawColliders)
+            _physicsSystem = new DebugPhysicsSystem(GraphicsDevice);
+        else
+            _physicsSystem = new PhysicsSystem();
+
         float mapSize = 300f;
         _centerX = GraphicsDevice.Viewport.Width / 2;
         _centerY = GraphicsDevice.Viewport.Height / 2;
         
-        
         _battlefield = new Battlefield(ContentFolderEffects + "BasicShader", Color.Green);
-        _battlefield.Initialize(GraphicsDevice, mapSize);
+        _battlefield.Initialize(GraphicsDevice, _physicsSystem, mapSize);
 
         // El jugador siempre spawnea en el spawn A, sobre la altura real del
         // terreno en ese punto (Battlefield.GetHeightAt).
@@ -87,7 +94,7 @@ public class TGCGame : Game
 
         // La torreta y el cañón se apuntan con el mouse, que es lo que mueve la cámara.
         _turretCanonMovementHandler = new TurretCanonCameraAimHandler();
-        _tank = new PlayerTank(new Vector3(spawnPosition.X, spawnHeight, spawnPosition.Y), new  Vector3(0.01f, 0.01f,0.01f), new  Vector3(0,0,0), Color.Red);
+        _tank = new PlayerTank(new Vector3(spawnPosition.X, spawnHeight, spawnPosition.Y), Vector3.One, new Vector3(0,0,0), Color.Red);
         _tank.Initialize();
 
         // Enemigos: spawnean cerca del spawn B (el opuesto al jugador), separados
@@ -103,7 +110,7 @@ public class TGCGame : Game
             var enemyHeight = _battlefield.GetHeightAt(enemyX, enemyZ);
 
             var enemyAI = new AI(_tank, _battlefield);
-            var enemyTank = new EnemyTank(new Vector3(enemyX, enemyHeight, enemyZ), new Vector3(0.01f, 0.01f, 0.01f), new Vector3(0, 0, 0), Color.Blue, enemyAI);
+            var enemyTank = new EnemyTank(new Vector3(enemyX, enemyHeight, enemyZ), Vector3.One, new Vector3(0, 0, 0), Color.Blue, enemyAI);
             enemyTank.Initialize();
             _enemyTanks.Add(enemyTank);
         }
@@ -125,9 +132,12 @@ public class TGCGame : Game
         
         _projection =
             Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 1, (int) Math.Ceiling(Math.Sqrt(Math.Pow(mapSize, 2)  + Math.Pow(mapSize, 2))));
-        
 
         Mouse.SetPosition(_centerX,_centerY);
+
+        _physicsSystem.Add(_tank);
+        _enemyTanks.ForEach(t => _physicsSystem.Add(t));
+
         base.Initialize();
     }
 
@@ -166,7 +176,6 @@ public class TGCGame : Game
     /// </summary>
     protected override void Update(GameTime gameTime)
     {
-        // Aca deberiamos poner toda la logica de actualizacion del juego.
         
         // Capturar Input teclado
         if (Keyboard.GetState().IsKeyDown(Keys.Escape))
@@ -206,6 +215,9 @@ public class TGCGame : Game
         }
 
         Mouse.SetPosition(_centerX,_centerY);
+
+        _physicsSystem.Update();
+
         base.Update(gameTime);
     }
 
@@ -218,13 +230,20 @@ public class TGCGame : Game
         GraphicsDevice.Clear(Color.Black);
         // GraphicsDevice.DepthStencilState = DepthStencilState.Default;
         
-        _battlefield.Draw(GraphicsDevice, _camera.GetView(), _projection);
-        _tank.Draw(GraphicsDevice, _camera.GetView(), _projection);
-
+        var view = _camera.GetView();
+        
+        _battlefield.Draw(GraphicsDevice, view, _projection);
+        _tank.Draw(GraphicsDevice, view, _projection);
+        
         foreach (var enemyTank in _enemyTanks)
         {
             enemyTank.Draw(GraphicsDevice, _camera.GetView(), _projection);
         }
+
+        if (_physicsSystem is DebugPhysicsSystem)
+            ((DebugPhysicsSystem) _physicsSystem).Draw(view, _projection);
+
+        DebugManager.Draw(GraphicsDevice, view, _projection);
     }
 
     /// <summary>

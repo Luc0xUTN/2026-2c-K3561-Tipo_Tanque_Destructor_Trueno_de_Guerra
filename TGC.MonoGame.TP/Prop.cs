@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using TGC.MonoGame.TP.Collisions;
 
 namespace TGC.MonoGame.TP;
 
@@ -9,7 +11,7 @@ public class Prop : Entity
 {
     public Prop(Vector3 position, Vector3 scale, Vector3 rotation, Color color) : base(position, scale, rotation, color)
     {
-        
+        IsStatic = true;
     }
 
     protected override void DrawMeshes()

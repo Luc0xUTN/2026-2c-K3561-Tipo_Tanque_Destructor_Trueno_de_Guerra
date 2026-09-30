@@ -1,18 +1,17 @@
 using System;
-using System.Reflection.Metadata.Ecma335;
-using BepuPhysics;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using TGC.MonoGame.TP.Collisions;
 using TGC.MonoGame.TP.Tanks;
-
 namespace TGC.MonoGame.TP;
 
 // Responsabilidad: Representar a un tanque en sí 
 public class Tank : Entity
 {
-    private float _acceleration = 1000f;
-    private float _deceleration = 1500f;
-    private float _maxSpeed = 1000f;
+    private float _acceleration = 50f;
+    private float _deceleration = 80f;
+    private float _maxSpeed = 50f;
 
     private float _rotationSpeed = MathF.PI * 0.25f;
 
@@ -28,7 +27,33 @@ public class Tank : Entity
     
     public Tank(Vector3 position,Vector3 scale, Vector3 rotation, Color color) : base(position, scale, rotation, color )
     {
-        
+        IsSolid = true;
+        IsStatic = false;
+
+        var vertices = new List<Vector3>
+        {
+            new(-2, 0, -2),
+            new( 2, 0, -2),
+            new( 2, 0,  2),
+            new(-2, 0,  2),
+
+            new(-2, 3, -2),
+            new( 2, 3, -2),
+            new( 2, 3,  2),
+            new(-2, 3,  2)
+        };
+
+        var faces = new List<Face>
+        {
+            new(vertices, new List<int> { 0, 1, 2, 3 }),
+            new(vertices, new List<int> { 0, 4, 5, 1 }),
+            new(vertices, new List<int> { 4, 7, 6, 5 }),
+            new(vertices, new List<int> { 1, 5, 6, 2 }),
+            new(vertices, new List<int> { 2, 6, 7, 3 }),
+            new(vertices, new List<int> { 3, 7, 4, 0 })
+        };
+
+        Collider = new ConvexCollider(this, vertices, faces);
     }
 
     public void LoadContent(Model model,  Effect effect, string turretBoneName, string canonBoneName)
@@ -99,6 +124,7 @@ public class Tank : Entity
         _position += _world.Forward * (_currentSpeed * elapsedTime);
 
         SetWorldMatrix();
+
         
         _turret.Update(elapsedTime);
         _canon.Update(elapsedTime);

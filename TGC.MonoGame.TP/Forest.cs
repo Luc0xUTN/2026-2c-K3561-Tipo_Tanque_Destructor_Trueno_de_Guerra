@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using TGC.MonoGame.TP.Collisions;
 
 namespace TGC.MonoGame.TP;
 
@@ -17,7 +18,14 @@ public class Forest
 
     private int _seed; // guardada para reutilizarla en LoadContent (selección de modelo de roca)
 
-    public void Initialize(Vector2 mapSize, int seed, Func<float, float, float> getHeightAt, Func<float, float, bool> isNavigable, float spacing = 5f)
+    public void Initialize(
+        Vector2 mapSize,
+        int seed,
+        Func<float, float, float> getHeightAt,
+        Func<float, float, bool> isNavigable,
+        PhysicsSystem physicsSystem,
+        float spacing = 5f
+        )
     {
         _seed = seed;
         _props = new List<Prop>();
@@ -72,11 +80,12 @@ public class Forest
                     float scaleVariationXZ = (float)random.NextDouble() + 1;
                     Vector3 scale = new Vector3(scaleVariationXZ, scaleVariationY, scaleVariationXZ);
 
-                    var tree = new Prop(new Vector3(posX, getHeightAt(posX, posZ), posZ), scale, new Vector3(0,0,0), color);
+                    var tree = new Tree(new Vector3(posX, getHeightAt(posX, posZ), posZ), scale, new Vector3(0,0,0), color);
                     tree.Initialize();
 
                     _trees.Add(tree);
-                    _props.Add(tree);    
+                    _props.Add(tree);
+                    physicsSystem.Add(tree);
                 }
             }
         }
