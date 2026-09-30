@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 
@@ -8,10 +9,31 @@ public class ConvexCollider : Collider
     public IReadOnlyList<Vector3> Vertices { get; }
     public IReadOnlyList<Face> Faces { get; }
 
-     public ConvexCollider(Entity entity, List<Vector3> vertices, List<Face> faces) : base(entity)
+    public ConvexCollider(Entity entity, List<Vector3> vertices, List<Face> faces) : base(entity)
     {
         Vertices = vertices;
         Faces = faces;
+
+        float maxDistanceSquared = 0;
+        foreach (var vertex in vertices)
+        {
+            maxDistanceSquared = MathF.Max(
+                maxDistanceSquared,
+                vertex.LengthSquared()
+            );
+        }
+
+        float localRadius = MathF.Sqrt(maxDistanceSquared);
+
+        float maxScale = MathF.Max(
+            MathF.Abs(_owner.GetScale().X),
+            MathF.Max(
+                MathF.Abs(_owner.GetScale().Y),
+                MathF.Abs(_owner.GetScale().Z)
+            )
+        );
+
+        _boundingRadius = localRadius * maxScale;
     }
 
     public IEnumerable<Edge> GetEdges()

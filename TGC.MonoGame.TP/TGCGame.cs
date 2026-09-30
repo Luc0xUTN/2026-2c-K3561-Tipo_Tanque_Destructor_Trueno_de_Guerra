@@ -7,6 +7,7 @@ using System.Diagnostics;
 using TGC.MonoGame.TP.Collisions;
 using TGC.MonoGame.TP.Cameras;
 using TGC.MonoGame.TP.Tanks.TurretCanonMovementHandlers;
+using System.IO;
 
 namespace TGC.MonoGame.TP;
 
@@ -27,6 +28,9 @@ public class TGCGame : Game
     private static readonly bool DebugIsometricCamera = false;
 
     private readonly GraphicsDeviceManager _graphics;
+    private PhysicsSystem _physicsSystem;
+
+    private bool _drawColliders = false;
     
     private Matrix _projection;
 
@@ -62,6 +66,7 @@ public class TGCGame : Game
         Content.RootDirectory = "Content";
         // Hace que el mouse sea visible.
         IsMouseVisible = false;
+
     }
 
     /// <summary>
@@ -70,12 +75,17 @@ public class TGCGame : Game
     /// </summary>
     protected override void Initialize()
     {
+        if (_drawColliders)
+            _physicsSystem = new DebugPhysicsSystem(GraphicsDevice);
+        else
+            _physicsSystem = new PhysicsSystem();
+
         float mapSize = 300f;
         _centerX = GraphicsDevice.Viewport.Width / 2;
         _centerY = GraphicsDevice.Viewport.Height / 2;
         
         _battlefield = new Battlefield(ContentFolderEffects + "BasicShader", Color.Green);
-        _battlefield.Initialize(GraphicsDevice, mapSize);
+        _battlefield.Initialize(GraphicsDevice, _physicsSystem, mapSize);
 
         // El jugador siempre spawnea en el spawn A, sobre la altura real del
         // terreno en ese punto (Battlefield.GetHeightAt).
@@ -87,7 +97,7 @@ public class TGCGame : Game
         _tank = new PlayerTank(new Vector3(spawnPosition.X, spawnHeight, spawnPosition.Y), Vector3.One, new Vector3(0,0,0), Color.Red);
         _tank.Initialize();
 
-        _enemyTank = new Tank(new Vector3(1,10,1), Vector3.One, new  Vector3(0,0,0), Color.Red);
+        _enemyTank = new Tank(new Vector3(1,spawnHeight,1), Vector3.One, new  Vector3(0,0,0), Color.Red);
         _enemyTank.Initialize();
 
         // Apago el backface culling.
@@ -110,14 +120,8 @@ public class TGCGame : Game
 
         Mouse.SetPosition(_centerX,_centerY);
 
-
-        // Gizmos
-        DebugManager.Add(
-            new ColliderGizmo(GraphicsDevice, _tank.Collider, true)
-        );
-        DebugManager.Add(
-            new ColliderGizmo(GraphicsDevice, _enemyTank.Collider, true)
-        );
+        _physicsSystem.Add(_tank);
+        _physicsSystem.Add(_enemyTank);
 
         base.Initialize();
     }
@@ -147,7 +151,6 @@ public class TGCGame : Game
     /// </summary>
     protected override void Update(GameTime gameTime)
     {
-        // Aca deberiamos poner toda la logica de actualizacion del juego.
         
         // Capturar Input teclado
         if (Keyboard.GetState().IsKeyDown(Keys.Escape))
@@ -180,8 +183,12 @@ public class TGCGame : Game
         );
 
         _tank.Update(elapsedTime);
+        _enemyTank.Update(elapsedTime);
         
         Mouse.SetPosition(_centerX,_centerY);
+
+        _physicsSystem.Update();
+
         base.Update(gameTime);
     }
 
@@ -199,6 +206,9 @@ public class TGCGame : Game
         _battlefield.Draw(GraphicsDevice, view, _projection);
         _tank.Draw(GraphicsDevice, view, _projection);
         _enemyTank.Draw(GraphicsDevice, view, _projection);
+
+        if (_physicsSystem is DebugPhysicsSystem)
+            ((DebugPhysicsSystem) _physicsSystem).Draw(view, _projection);
 
         DebugManager.Draw(GraphicsDevice, view, _projection);
     }

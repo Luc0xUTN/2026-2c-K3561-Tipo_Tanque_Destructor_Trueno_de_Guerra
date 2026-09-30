@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using TGC.MonoGame.TP.Collisions;
 
 namespace TGC.MonoGame.TP;
 
@@ -45,7 +46,7 @@ public class Battlefield
         _terrainColor = terrainColor;
     }
 
-    public void Initialize(GraphicsDevice device, float mapSize)
+    public void Initialize(GraphicsDevice device, PhysicsSystem physicsSystem, float mapSize)
     {
         // Cada módulo deriva su propia seed independiente a partir de la
         // MasterSeed, en vez de compartir un único stream secuencial: así,
@@ -64,7 +65,7 @@ public class Battlefield
         // (GetHeightAt) y qué zonas son navegables (IsNavigable) para llenar
         // únicamente el complemento de los carriles con árboles/rocas.
         _forest = new Forest();
-        _forest.Initialize(new Vector2(mapSize, mapSize), forestSeed, _terrain.GetHeightAt, IsNavigable);
+        _forest.Initialize(new Vector2(mapSize, mapSize), forestSeed, _terrain.GetHeightAt, IsNavigable, physicsSystem);
     }
 
     private void GenerateSpawnsAndLanes(int lanesSeed)

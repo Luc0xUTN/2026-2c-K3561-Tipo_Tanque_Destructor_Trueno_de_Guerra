@@ -6,7 +6,21 @@ namespace TGC.MonoGame.TP.Collisions;
 
 public static class CollisionDetector
 {
-    public static CollisionResult CheckCollision(ConvexCollider a, ConvexCollider b)
+    public static CollisionResult CheckCollision(ICollidable a, ICollidable b)
+    {
+        if (a.Collider is ConvexCollider convexA && b.Collider is ConvexCollider convexB)
+        {
+            return CheckConvexConvex(convexA, convexB);
+        }
+
+        return new CollisionResult(
+            false,
+            Vector3.Zero,
+            0
+        );
+    }
+
+    private static CollisionResult CheckConvexConvex(ConvexCollider a, ConvexCollider b)
     {
         var axes = GetSATCandidateAxes(a, b);
 

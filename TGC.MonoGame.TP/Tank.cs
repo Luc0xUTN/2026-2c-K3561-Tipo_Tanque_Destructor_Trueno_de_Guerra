@@ -25,10 +25,11 @@ public class Tank : Entity
     protected Turret _turret;
     protected Canon _canon; 
     
-    public readonly ConvexCollider Collider;
-    
     public Tank(Vector3 position,Vector3 scale, Vector3 rotation, Color color) : base(position, scale, rotation, color )
     {
+        IsSolid = true;
+        IsStatic = false;
+
         var vertices = new List<Vector3>
         {
             new(-2, 0, -2),
