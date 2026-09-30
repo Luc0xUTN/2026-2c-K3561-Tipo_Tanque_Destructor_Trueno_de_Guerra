@@ -5,10 +5,9 @@ using Microsoft.Xna.Framework;
 namespace TGC.MonoGame.TP;
 
 // Responsabilidad: Generar la curva central de un carril entre dos puntos ancla
-// (Midpoint Displacement, ver repo de contexto progress/07-lane-generation.md para
-// la derivación completa), y poder consultar la distancia de un punto a esa curva.
+// (Midpoint Displacement), y poder consultar la distancia de un punto a esa curva.
 // Un carril NUNCA se dibuja — es un dato geométrico que Forest usa para saber dónde
-// NO poner props (ver progress/07, sección "pipeline corregido").
+// NO poner props.
 public static class Lane
 {
     // arcoBase: sesgo perpendicular DETERMINÍSTICO (no aleatorio), como fracción del
@@ -62,22 +61,41 @@ public static class Lane
         var minDistance = float.MaxValue;
         for (var i = 0; i < polyline.Count - 1; i++)
         {
-            var distance = DistanceToSegment(point, polyline[i], polyline[i + 1]);
+            var distance = Vector2.Distance(point, ClosestPointOnSegment(point, polyline[i], polyline[i + 1]));
             if (distance < minDistance)
                 minDistance = distance;
         }
         return minDistance;
     }
 
-    private static float DistanceToSegment(Vector2 point, Vector2 a, Vector2 b)
+    // Punto de la polilínea más cercano a otro punto dado — lo usa AI para saber
+    // hacia dónde moverse sobre el carril elegido (a diferencia de DistanceToPolyline,
+    // acá lo que importa es la posición, no qué tan lejos está).
+    public static Vector2 ClosestPointOnPolyline(Vector2 point, List<Vector2> polyline)
+    {
+        var minDistance = float.MaxValue;
+        var closestPoint = polyline[0];
+        for (var i = 0; i < polyline.Count - 1; i++)
+        {
+            var candidate = ClosestPointOnSegment(point, polyline[i], polyline[i + 1]);
+            var distance = Vector2.Distance(point, candidate);
+            if (distance < minDistance)
+            {
+                minDistance = distance;
+                closestPoint = candidate;
+            }
+        }
+        return closestPoint;
+    }
+
+    private static Vector2 ClosestPointOnSegment(Vector2 point, Vector2 a, Vector2 b)
     {
         var ab = b - a;
         var lengthSquared = ab.LengthSquared();
         if (lengthSquared < 1e-6f)
-            return Vector2.Distance(point, a);
+            return a;
 
         var t = MathHelper.Clamp(Vector2.Dot(point - a, ab) / lengthSquared, 0f, 1f);
-        var closest = a + ab * t;
-        return Vector2.Distance(point, closest);
+        return a + ab * t;
     }
 }

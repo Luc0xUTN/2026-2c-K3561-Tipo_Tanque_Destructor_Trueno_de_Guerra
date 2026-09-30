@@ -9,10 +9,9 @@ namespace TGC.MonoGame.TP;
 // Responsabilidad: Representar al terreno donde se va a situar la batalla
 public class Terrain
 {
-    // Parámetros del heightmap procedural (ruido de Perlin + fBm).
-    // Derivación completa de cada valor, incluida la justificación contra
-    // el tamaño real medido del tanque y los límites de performance sin
-    // culling: repo de contexto, progress/04-procedural-terrain-noise.md.
+    // Parámetros del heightmap procedural (ruido de Perlin + fBm), derivados
+    // contra el tamaño real medido del tanque y los límites de performance
+    // sin culling.
     private const int GridResolution = 128; // vértices por lado. Celda ≈ mapSize/127 ≈ 1/4 del largo del tanque.
     private const float HeightRange = 9f; // unidades de mundo, rango total (min a max). ≈3x el alto real estimado del tanque.
     private const float BaseFrequency = 0.0233f; // ≈ 4 colinas grandes a lo largo de un mapa de 300 unidades.
@@ -21,7 +20,7 @@ public class Terrain
     private const float Lacunarity = 1f;
 
     private const int PermutationSize = 256;
-    private const int PermutationMask = PermutationSize - 1; // 255: la máscara tiene que ser potencia de 2 menos 1 (ver progress/04).
+    private const int PermutationMask = PermutationSize - 1; // 255: la máscara tiene que ser potencia de 2 menos 1.
 
     // Debug: poner en true para que, la próxima vez que se genere el terreno, se
     // guarde una imagen en escala de grises con las alturas crudas
@@ -93,9 +92,8 @@ public class Terrain
         }
 
         // Direcciones de gradiente: PermutationSize vectores unitarios equiespaciados.
-        // Se descartó el switch de 8 direcciones con sesgo de módulo (ver progress/04):
-        // acá no aplica el argumento de costo porque la generación es de carga única,
-        // no por frame.
+        // Se descartó el switch de 8 direcciones con sesgo de módulo: acá no aplica
+        // el argumento de costo porque la generación es de carga única, no por frame.
         _gradients = new Vector2[PermutationSize];
         for (var i = 0; i < PermutationSize; i++)
         {
@@ -154,7 +152,7 @@ public class Terrain
     }
 
     // f(t) = 3t² - 2t³. f'(0) = f'(1) = 0: por eso no se nota la costura entre celdas
-    // vecinas (ver progress/04 para la derivación completa).
+    // vecinas.
     private static float Fade(float t) => t * t * (3f - 2f * t);
 
     // Loop de fBm: acumula freq (x lacunarity) y amp (x persistence) por octava,

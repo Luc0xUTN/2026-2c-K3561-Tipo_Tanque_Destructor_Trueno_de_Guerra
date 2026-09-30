@@ -9,7 +9,6 @@ namespace TGC.MonoGame.TP;
 // Responsabilidad: Administrar el campo de batalla (Terrain, los carriles/claros
 // navegables, y Forest). Pipeline: A) spawns + zona media -> B) carriles (datos
 // geométricos, nunca se dibujan) -> C) Forest llena el complemento de los carriles.
-// Ver repo de contexto, progress/07-lane-generation.md.
 public class Battlefield
 {
     // Seed madre temporal (mismo patrón que el flag de debug de Terrain).
@@ -26,7 +25,7 @@ public class Battlefield
     private const int LaneCount = 3;
     private const int LaneNiveles = 9; // provisorio, a tunear mirando el resultado.
     private const float LaneDesviacionRelativa = 0.21f; // provisorio — ruido orgánico fino, ya no es lo único que separa los carriles.
-    private const float LaneHalfWidth = 7f; // ancho navegable fijo por ahora (ver progress/07: la versión con bordes independientes y ancho variable queda para una iteración posterior).
+    private const float LaneHalfWidth = 7f; // ancho navegable fijo por ahora (la versión con bordes independientes y ancho variable queda para una iteración posterior).
 
     private readonly string _shaderRoute;
     private readonly Color _terrainColor;
@@ -35,6 +34,10 @@ public class Battlefield
     private Forest _forest;
 
     private readonly List<List<Vector2>> _laneCurves = new();
+    // halfA+halfB concatenados por carril (3 curvas completas spawnA->spawnB en vez
+    // de las 6 mitades de _laneCurves) — las usa AI para elegir "la lane más cercana"
+    // como una sola curva continua, no como dos mitades separadas.
+    private readonly List<List<Vector2>> _fullLaneCurves = new();
     private Vector2 _spawnA;
     private Vector2 _spawnB;
     private Vector2 _center;
@@ -50,7 +53,7 @@ public class Battlefield
         // Cada módulo deriva su propia seed independiente a partir de la
         // MasterSeed, en vez de compartir un único stream secuencial: así,
         // cambios internos en un módulo no corren silenciosamente los resultados
-        // de otro para la misma seed (ver progress/05-world-generation-pipeline.md).
+        // de otro para la misma seed.
         var terrainSeed = MasterSeed;
         var forestSeed = unchecked(MasterSeed * -1640531527); // mix multiplicativo tipo Knuth
         var lanesSeed = unchecked(MasterSeed * 668265263);
@@ -102,6 +105,10 @@ public class Battlefield
 
             _laneCurves.Add(halfA);
             _laneCurves.Add(halfB);
+
+            var fullCurve = new List<Vector2>(halfA);
+            fullCurve.AddRange(halfB);
+            _fullLaneCurves.Add(fullCurve);
         }
     }
 
@@ -148,5 +155,18 @@ public class Battlefield
     public Vector2 GetSpawnA()
     {
         return _spawnA;
+    }
+
+    // Punto de spawn de los enemigos (siempre B, el opuesto al jugador).
+    public Vector2 GetSpawnB()
+    {
+        return _spawnB;
+    }
+
+    // Las 3 lanes completas (spawnA->centro->spawnB), para que AI pueda elegir
+    // "la más cercana" y perseguir al jugador sin salirse de zona navegable.
+    public IReadOnlyList<List<Vector2>> GetLaneCurves()
+    {
+        return _fullLaneCurves;
     }
 }

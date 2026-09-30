@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Numerics;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using TGC.MonoGame.TP.Cameras;
@@ -41,6 +42,7 @@ public class TGCGame : Game
     private readonly Keys _keyFreeLook = Keys.C;
 
     private Tank _tank;
+    private List<EnemyTank> _enemyTanks;
 
     private BaseCamera _camera;
 
@@ -88,6 +90,24 @@ public class TGCGame : Game
         _tank = new PlayerTank(new Vector3(spawnPosition.X, spawnHeight, spawnPosition.Y), new  Vector3(0.01f, 0.01f,0.01f), new  Vector3(0,0,0), Color.Red);
         _tank.Initialize();
 
+        // Enemigos: spawnean cerca del spawn B (el opuesto al jugador), separados
+        // entre sí para no superponerse. Radio de separación estimado a ojo contra
+        // el ancho del claro de spawn (22u) y el tamaño del tanque.
+        var enemySpawnCenter = _battlefield.GetSpawnB();
+        float[] enemyOffsetsX = { -10f, 0f, 10f };
+        _enemyTanks = new List<EnemyTank>();
+        foreach (var offsetX in enemyOffsetsX)
+        {
+            var enemyX = enemySpawnCenter.X + offsetX;
+            var enemyZ = enemySpawnCenter.Y;
+            var enemyHeight = _battlefield.GetHeightAt(enemyX, enemyZ);
+
+            var enemyAI = new AI(_tank, _battlefield);
+            var enemyTank = new EnemyTank(new Vector3(enemyX, enemyHeight, enemyZ), new Vector3(0.01f, 0.01f, 0.01f), new Vector3(0, 0, 0), Color.Blue, enemyAI);
+            enemyTank.Initialize();
+            _enemyTanks.Add(enemyTank);
+        }
+
         // Apago el backface culling.
         // Esto se hace por un problema en el diseno del modelo del logo de la materia.
         // Una vez que empiecen su juego, esto no es mas necesario y lo pueden sacar.
@@ -120,12 +140,22 @@ public class TGCGame : Game
     {
         _battlefield.LoadContent(Content, ContentFolder3D);
 
-        Model panzer = Content.Load<Model>(ContentFolder3D + "tanks/Panzer/Panzer");
-        Model t90 = Content.Load<Model>( ContentFolder3D + "tanks/T90/T90");
-        Effect effect = Content.Load<Effect>(ContentFolderEffects + "BasicShader");        
-        
-        _tank.LoadContent(panzer, effect, "Turret", "Cannon");
-        
+        Effect effect = Content.Load<Effect>(ContentFolderEffects + "BasicShader");
+
+        // Cada tanque carga el modelo con su propio ContentManager. Si todos
+        // comparten uno (como antes), ContentManager cachea el Model por path y
+        // los 4 tanques terminan compartiendo los mismos ModelBone de torreta y
+        // cañón -- el último que actualiza en el frame pisa a los demás (ver
+        // progress/09 en el repo de contexto).
+        Model playerModel = new ContentManager(Services, Content.RootDirectory).Load<Model>(ContentFolder3D + "tanks/Panzer/Panzer");
+        _tank.LoadContent(playerModel, effect, "Turret", "Cannon");
+
+        foreach (var enemyTank in _enemyTanks)
+        {
+            Model enemyModel = new ContentManager(Services, Content.RootDirectory).Load<Model>(ContentFolder3D + "tanks/Panzer/Panzer");
+            enemyTank.LoadContent(enemyModel, effect, "Turret", "Cannon");
+        }
+
         base.LoadContent();
     }
 
@@ -169,7 +199,12 @@ public class TGCGame : Game
         );
 
         _tank.Update(elapsedTime);
-        
+
+        foreach (var enemyTank in _enemyTanks)
+        {
+            enemyTank.Update(elapsedTime);
+        }
+
         Mouse.SetPosition(_centerX,_centerY);
         base.Update(gameTime);
     }
@@ -185,6 +220,11 @@ public class TGCGame : Game
         
         _battlefield.Draw(GraphicsDevice, _camera.GetView(), _projection);
         _tank.Draw(GraphicsDevice, _camera.GetView(), _projection);
+
+        foreach (var enemyTank in _enemyTanks)
+        {
+            enemyTank.Draw(GraphicsDevice, _camera.GetView(), _projection);
+        }
     }
 
     /// <summary>
