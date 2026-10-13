@@ -17,8 +17,9 @@ public class Canon : RotationalObject
 
     public Canon(ModelBone bone) : base(bone)
     {
-        _angularAceleration = 7f;
-        _angularDamping = 5.0f;
+        // Elevación lenta y con inercia, en línea con la torreta (la mira marca el objetivo).
+        _angularAceleration = 4f;
+        _angularDamping = 4.0f;
     }
     
     protected override Quaternion GetRotation()

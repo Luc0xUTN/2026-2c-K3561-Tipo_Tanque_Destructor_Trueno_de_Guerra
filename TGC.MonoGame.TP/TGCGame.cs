@@ -37,6 +37,10 @@ public class TGCGame : Game
 
     private Battlefield _battlefield;
 
+    // Recursos de la mira (retículo) que se dibuja sobre la escena.
+    private SpriteBatch _spriteBatch;
+    private Texture2D _reticlePixel;
+
     private int _centerX;
     private int _centerY;
     
@@ -127,7 +131,7 @@ public class TGCGame : Game
 
         _camera = DebugIsometricCamera
             ? new IsometricCamera(new Vector3(200, 220, 200), Vector3.Zero, Vector3.Up)
-            : new OrbitalCamera(_tank, 20, _centerX, _centerY, _sensitivity);
+            : new OrbitalCamera(_tank, 20, _centerX, _centerY, _sensitivity, _battlefield.GetHeightAt);
         _camera.Initialize();
         
         _projection =
@@ -165,6 +169,11 @@ public class TGCGame : Game
             Model enemyModel = new ContentManager(Services, Content.RootDirectory).Load<Model>(ContentFolder3D + "tanks/Panzer/Panzer");
             enemyTank.LoadContent(enemyModel, effect, "Turret", "Cannon");
         }
+
+        // Un único pixel blanco reescalado alcanza para armar la mira del HUD.
+        _spriteBatch = new SpriteBatch(GraphicsDevice);
+        _reticlePixel = new Texture2D(GraphicsDevice, 1, 1);
+        _reticlePixel.SetData(new[] { Color.White });
 
         base.LoadContent();
     }
@@ -244,6 +253,43 @@ public class TGCGame : Game
             ((DebugPhysicsSystem) _physicsSystem).Draw(view, _projection);
 
         DebugManager.Draw(GraphicsDevice, view, _projection);
+
+        _spriteBatch.Begin();
+        DrawReticle(view);
+        _spriteBatch.End();
+    }
+
+    // Mira : la cruz se proyecta desde la dirección que marca el mouse, así que
+    // sigue al mouse en pantalla y la cámara la recentra a medida que se acomoda detrás del tanque.
+    // La torreta y el cañón persiguen esa misma dirección, más lento todavía.
+    private void DrawReticle(Matrix view)
+    {
+        const int gap = 5;
+        const int arm = 14;
+        const int thickness = 2;
+        int half = thickness / 2;
+        Color color = new Color(0.25f, 1f, 0.25f, 0.9f);
+
+        // Punto lejano en la dirección de puntería, saliendo de la torreta.
+        Vector3 aimPoint = _tank.GetPosition() + Vector3.Up * 2.5f + _camera.AimDirection * 200f;
+
+        Vector3 screen = GraphicsDevice.Viewport.Project(aimPoint, _projection, view, Matrix.Identity);
+        if (screen.Z < 0f || screen.Z > 1f)
+            return; // quedó detrás de la cámara
+
+        // Se mantiene siempre dentro de la pantalla, aun apuntando al límite del rango del cañón.
+        int margin = gap + arm;
+        int cx = (int)MathHelper.Clamp(screen.X, margin, GraphicsDevice.Viewport.Width - margin);
+        int cy = (int)MathHelper.Clamp(screen.Y, margin, GraphicsDevice.Viewport.Height - margin);
+
+        // Brazos horizontales.
+        _spriteBatch.Draw(_reticlePixel, new Rectangle(cx - gap - arm, cy - half, arm, thickness), color);
+        _spriteBatch.Draw(_reticlePixel, new Rectangle(cx + gap, cy - half, arm, thickness), color);
+        // Brazos verticales.
+        _spriteBatch.Draw(_reticlePixel, new Rectangle(cx - half, cy - gap - arm, thickness, arm), color);
+        _spriteBatch.Draw(_reticlePixel, new Rectangle(cx - half, cy + gap, thickness, arm), color);
+        // Punto central.
+        _spriteBatch.Draw(_reticlePixel, new Rectangle(cx - 1, cy - 1, 2, 2), color);
     }
 
     /// <summary>
@@ -252,6 +298,8 @@ public class TGCGame : Game
     protected override void UnloadContent()
     {
         // Libero los recursos.
+        _reticlePixel?.Dispose();
+        _spriteBatch?.Dispose();
         Content.Unload();
 
         base.UnloadContent();

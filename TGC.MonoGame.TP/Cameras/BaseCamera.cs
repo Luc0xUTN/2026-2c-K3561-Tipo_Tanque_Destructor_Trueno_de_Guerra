@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
@@ -23,6 +24,20 @@ public abstract class BaseCamera
     ///     último punto apuntado (Free Look). Al desactivarlo vuelven a apuntar a la dirección de puntería.
     /// </summary>
     public bool IsFreeLook { get; set; }
+
+    /// <summary>
+    ///     Dirección unitaria hacia donde apunta el mouse, en espacio de mundo. La usa el HUD para
+    ///     proyectar el retículo sobre la pantalla. Misma convención que el cañón: a yaw 0 apunta a
+    ///     +Z y un pitch positivo mira hacia arriba.
+    /// </summary>
+    public Vector3 AimDirection
+    {
+        get
+        {
+            float cosPitch = MathF.Cos(Pitch);
+            return new Vector3(MathF.Sin(Yaw) * cosPitch, MathF.Sin(Pitch), MathF.Cos(Yaw) * cosPitch);
+        }
+    }
 
     public abstract void Initialize();
     
