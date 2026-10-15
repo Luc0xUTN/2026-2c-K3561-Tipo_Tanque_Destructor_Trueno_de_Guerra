@@ -237,7 +237,7 @@ public class TGCGame : Game
     protected override void Draw(GameTime gameTime)
     {
         GraphicsDevice.Clear(Color.Black);
-        // GraphicsDevice.DepthStencilState = DepthStencilState.Default;
+        GraphicsDevice.DepthStencilState = DepthStencilState.Default;
         
         var view = _camera.GetView();
         

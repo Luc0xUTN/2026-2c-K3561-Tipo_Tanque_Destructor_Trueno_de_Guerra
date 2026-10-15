@@ -216,12 +216,12 @@ public class Terrain
                 var v11 = (ushort)((zIndex + 1) * GridResolution + xIndex + 1);
 
                 indices[idx++] = v00;
-                indices[idx++] = v01;
                 indices[idx++] = v11;
+                indices[idx++] = v01;
 
                 indices[idx++] = v00;
-                indices[idx++] = v11;
                 indices[idx++] = v10;
+                indices[idx++] = v11;
             }
         }
 
@@ -293,7 +293,7 @@ public class Terrain
 
         return MathHelper.Lerp(hx0, hx1, tz);
     }
-
+    
     public void Draw(GraphicsDevice device, Matrix view, Matrix projection)
     {
         device.SetVertexBuffer(_vertices);
