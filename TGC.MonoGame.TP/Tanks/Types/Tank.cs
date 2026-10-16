@@ -14,15 +14,18 @@ namespace TGC.MonoGame.TP;
 public class Tank : Entity
 {
     private float _acceleration = 50f;
-    private float _deceleration = 80f;
-    private float _maxSpeed = 50f;
+    private float _deceleration = 3f;
 
-    private float _rotationSpeed = MathF.PI * 0.25f;
 
     private int _speedingDirection = 0;
-    private float _currentSpeed = 0;
-    
     private int _rotationDirection = 0;
+
+    private float _leftCaterpillarSpeed = 0;
+    private float _rightCaterpillarSpeed = 0;
+    private float _dumping = 1.0f;
+    
+    private float _caterpillarDistance = 2.0f; 
+    
     
     private float _yaw; 
     
@@ -61,7 +64,8 @@ public class Tank : Entity
             new(vertices, new List<int> { 3, 7, 4, 0 })
         };
 
-        _yaw = 0.0f; 
+        _yaw = 0.0f;
+        _dumping = 2.0f; 
         
         Collider = new ConvexCollider(this, vertices, faces);
         _battlefield = battlefield;
@@ -106,39 +110,43 @@ public class Tank : Entity
     
 
     public virtual void Update(float elapsedTime)
-    { 
-        // Yaw
-        var prevYaw = _yaw; 
-        _yaw -= _rotationDirection * _rotationSpeed * elapsedTime; // Resta para que el positivo sea hacia las agujas del reloj
+    {
+        _leftCaterpillarSpeed += _speedingDirection * _acceleration * elapsedTime;
+        _rightCaterpillarSpeed += _speedingDirection * _acceleration * elapsedTime;
         
-        var pi2 = MathF.PI * 2;
+        _leftCaterpillarSpeed -= _rotationDirection * _deceleration * elapsedTime;
+        _rightCaterpillarSpeed += _rotationDirection * _deceleration * elapsedTime;
         
-        if (_yaw> pi2)
-        {
-            _yaw -= pi2;
-        }
-
-        Quaternion rotacionTanque = Quaternion.CreateFromYawPitchRoll(_yaw - prevYaw, 0, 0);
+        // Está fórmula de amortiguación es equivalente a  Vf = Vi / (1 + C * dT) 
+        // Es muy útil debido a que permite acotar la velocidad de movimiento del objeto (Impone una Velocidad terminal)
+        _leftCaterpillarSpeed /= (1.0f + _dumping * elapsedTime);  
+        _rightCaterpillarSpeed /= (1.0f + _dumping * elapsedTime);
         
-        if (_speedingDirection != 0) // Está acelerando hacia adelante o atrás
-        {
-            _currentSpeed = MathF.MinMagnitude(
-                _currentSpeed + _acceleration * _speedingDirection * elapsedTime,
-                _maxSpeed * _speedingDirection
-            );
-        }
-
-        int movingDirection = Math.Sign(_currentSpeed);
-        float absSpeed = MathF.Abs(_currentSpeed);
-        if (_speedingDirection != movingDirection) // Está frenando o está desplazándose pero sin acelerar
-        {
-            _currentSpeed = MathF.Max(absSpeed - _deceleration * elapsedTime, 0) * movingDirection;
-        }
+        float angularSpeed = (_leftCaterpillarSpeed -  _rightCaterpillarSpeed) / _caterpillarDistance ;
+        float tankSpeed = (_leftCaterpillarSpeed + _rightCaterpillarSpeed) / 2;
         
-        _position += _world.Forward * (_currentSpeed * elapsedTime);
-        _position.Y = _battlefield.GetHeightAt(_position.X, _position.Z);
+        float difAngle = angularSpeed * elapsedTime;
+        _yaw += difAngle; 
+        
+        _position += _world.Forward * tankSpeed * elapsedTime;
+        
+        const float floorDistance = 0.1f; 
+        _position.Y = _battlefield.GetHeightAt(_position.X, _position.Z) + floorDistance ;
+        
+        Quaternion tankRotation = Quaternion.CreateFromYawPitchRoll(difAngle, 0,0 );
+        Quaternion terrainRotation = _getTerrainRotationQuaternion(); 
+        
+        _rotation = tankRotation * terrainRotation;
+            
+        SetWorldMatrix();
 
         
+        _turret.Update(elapsedTime);
+        _canon.Update(elapsedTime);
+    }
+
+    private Quaternion _getTerrainRotationQuaternion()
+    {
         Vector3 normalTerreno = _battlefield.GetNormalAt(_position.X, _position.Z);
         
         Vector3 right = Vector3.Cross(_world.Forward, normalTerreno);
@@ -152,13 +160,7 @@ public class Tank : Entity
         rotacionTerreno.Right = right;
         rotacionTerreno.Up = normalTerreno;
         
-        _rotation = rotacionTanque * Quaternion.CreateFromRotationMatrix(rotacionTerreno);
-            
-        SetWorldMatrix();
-
-        
-        _turret.Update(elapsedTime);
-        _canon.Update(elapsedTime);
+        return Quaternion.CreateFromRotationMatrix(rotacionTerreno);
     }
     
     protected void Move(int direction)
