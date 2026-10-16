@@ -237,4 +237,16 @@ public class GameScene : Scene
     {
         _contentManager.Unload();   
     }
+
+    public bool ShouldTransition()
+    {
+        // TODO: Implementar la lógica de ganar o perder
+        return false; 
+    }
+
+    public Scene Transition()
+    {
+        this.Unload();
+        return null; 
+    }
 }

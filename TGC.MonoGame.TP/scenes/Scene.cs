@@ -11,4 +11,6 @@ public interface Scene
     void Update(float elapsedTime);
     void Draw();
     void Unload();
+    bool ShouldTransition();
+    Scene Transition(); 
 }

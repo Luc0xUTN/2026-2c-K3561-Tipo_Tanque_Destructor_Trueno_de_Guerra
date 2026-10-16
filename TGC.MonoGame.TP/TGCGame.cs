@@ -9,6 +9,7 @@ using TGC.MonoGame.TP.Collisions;
 using TGC.MonoGame.TP.Cameras;
 using TGC.MonoGame.TP.Tanks.TurretCanonMovementHandlers;
 using System.IO;
+using ImGuiNET;
 using TGC.MonoGame.TP.scenes;
 
 namespace TGC.MonoGame.TP;
@@ -83,6 +84,13 @@ public class TGCGame : Game
         
         var elapsedTime = Convert.ToSingle(gameTime.ElapsedGameTime.TotalSeconds);
 
+        if (_scene.ShouldTransition())
+        {
+            _scene = _scene.Transition();
+            _scene.Initialize();
+            _scene.LoadContent();
+        }
+        
         _scene.Update(elapsedTime);
 
         base.Update(gameTime);
