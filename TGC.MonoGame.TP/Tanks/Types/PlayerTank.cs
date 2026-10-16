@@ -11,7 +11,7 @@ public class PlayerTank: Tank
     private Keys _keyRotateLeft = Keys.A;
     private Keys _keyRotateRight = Keys.D;
 
-    public PlayerTank(Vector3 position, Vector3 scale, Vector3 rotation, Color color) : base(position, scale, rotation, color)
+    public PlayerTank(Vector3 position, Vector3 scale, Vector3 rotation, Color color, Battlefield battlefield) : base(position, scale, rotation, color, battlefield)
     {
     }
     

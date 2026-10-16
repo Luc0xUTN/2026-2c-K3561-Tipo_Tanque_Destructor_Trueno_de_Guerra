@@ -13,7 +13,7 @@ public abstract class Entity : ICollidable
 {
     protected Vector3 _position; 
     protected Vector3 _scale;
-    protected Vector3 _rotation;
+    protected Quaternion _rotation;
     protected Color _color; 
     
     protected Matrix _world;
@@ -28,7 +28,7 @@ public abstract class Entity : ICollidable
 
     public Vector3 GetPosition() => _position;
     public Vector3 GetScale() => _scale;
-    public Vector3 GetRotation() => _rotation;
+    public Quaternion GetRotation() => _rotation;
     public Matrix GetWorld() => _world;
 
     public void SetPosition(Vector3 position)
@@ -41,7 +41,7 @@ public abstract class Entity : ICollidable
     {
         _position = position;
         _scale = scale; 
-        _rotation = rotation;
+        _rotation = Quaternion.CreateFromYawPitchRoll(rotation.X, rotation.Y, rotation.Z);
         _color = color;
     }
 
@@ -65,10 +65,10 @@ public abstract class Entity : ICollidable
         }
     }
     
+    
     public void SetWorldMatrix()
     {
-        Quaternion qrotation = Quaternion.CreateFromYawPitchRoll(_rotation.X, _rotation.Y, _rotation.Z);
-        _world =  Matrix.CreateScale(_scale) * Matrix.CreateFromQuaternion(qrotation) * Matrix.CreateTranslation(_position);
+        _world =  Matrix.CreateScale(_scale) * Matrix.CreateFromQuaternion(_rotation) * Matrix.CreateTranslation(_position);
     }
 
     public void Draw(GraphicsDevice graphicsDevice, Matrix view, Matrix projection)

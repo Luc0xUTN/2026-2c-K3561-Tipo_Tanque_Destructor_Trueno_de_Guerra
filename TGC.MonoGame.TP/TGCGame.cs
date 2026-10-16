@@ -98,9 +98,10 @@ public class TGCGame : Game
 
         // La torreta y el cañón se apuntan con el mouse, que es lo que mueve la cámara.
         _turretCanonMovementHandler = new TurretCanonCameraAimHandler();
-        _tank = new PlayerTank(new Vector3(spawnPosition.X, spawnHeight, spawnPosition.Y), Vector3.One, new Vector3(0,0,0), Color.Red);
+        _tank = new PlayerTank(new Vector3(spawnPosition.X, spawnHeight, spawnPosition.Y), Vector3.One, new Vector3(0,0,0), Color.Red, _battlefield);
         _tank.Initialize();
-
+        
+        
         // Enemigos: spawnean cerca del spawn B (el opuesto al jugador), separados
         // entre sí para no superponerse. Radio de separación estimado a ojo contra
         // el ancho del claro de spawn (22u) y el tamaño del tanque.
@@ -114,7 +115,7 @@ public class TGCGame : Game
             var enemyHeight = _battlefield.GetHeightAt(enemyX, enemyZ);
 
             var enemyAI = new AI(_tank, _battlefield);
-            var enemyTank = new EnemyTank(new Vector3(enemyX, enemyHeight, enemyZ), Vector3.One, new Vector3(0, 0, 0), Color.Blue, enemyAI);
+            var enemyTank = new EnemyTank(new Vector3(enemyX, enemyHeight, enemyZ), Vector3.One, new Vector3(0, 0, 0), Color.Blue, enemyAI, _battlefield);
             enemyTank.Initialize();
             _enemyTanks.Add(enemyTank);
         }
@@ -215,16 +216,16 @@ public class TGCGame : Game
             _camera.Pitch,
             freeLook
         );
-
+        
         _tank.Update(elapsedTime);
-
+        
         foreach (var enemyTank in _enemyTanks)
         {
             enemyTank.Update(elapsedTime);
         }
 
         Mouse.SetPosition(_centerX,_centerY);
-
+        
         _physicsSystem.Update();
 
         base.Update(gameTime);

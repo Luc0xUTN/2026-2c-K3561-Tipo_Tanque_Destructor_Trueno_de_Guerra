@@ -10,8 +10,8 @@ public class EnemyTank : Tank
 {
     private readonly AI _ai;
 
-    public EnemyTank(Vector3 position, Vector3 scale, Vector3 rotation, Color color, AI ai)
-        : base(position, scale, rotation, color)
+    public EnemyTank(Vector3 position, Vector3 scale, Vector3 rotation, Color color, AI ai, Battlefield battlefield) 
+        : base(position, scale, rotation, color, battlefield)
     {
         _ai = ai;
     }

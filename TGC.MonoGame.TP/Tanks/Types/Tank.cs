@@ -1,9 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using TGC.MonoGame.TP.Collisions;
 using TGC.MonoGame.TP.Tanks;
+using Quaternion = Microsoft.Xna.Framework.Quaternion;
+using Vector3 = Microsoft.Xna.Framework.Vector3;
+
 namespace TGC.MonoGame.TP;
 
 // Responsabilidad: Representar a un tanque en sí 
@@ -19,13 +23,17 @@ public class Tank : Entity
     private float _currentSpeed = 0;
     
     private int _rotationDirection = 0;
-
+    
+    private float _yaw; 
+    
     private Matrix[] _absoluteWorldsMatrix;
-
+    
+    private Battlefield _battlefield;
+    
     protected Turret _turret;
     protected Canon _canon; 
     
-    public Tank(Vector3 position,Vector3 scale, Vector3 rotation, Color color) : base(position, scale, rotation, color )
+    public Tank(Vector3 position,Vector3 scale, Vector3 rotation, Color color, Battlefield battlefield) : base(position, scale, rotation, color )
     {
         IsSolid = true;
         IsStatic = false;
@@ -53,7 +61,10 @@ public class Tank : Entity
             new(vertices, new List<int> { 3, 7, 4, 0 })
         };
 
+        _yaw = 0.0f; 
+        
         Collider = new ConvexCollider(this, vertices, faces);
+        _battlefield = battlefield;
     }
 
     public void LoadContent(Model model,  Effect effect, string turretBoneName, string canonBoneName)
@@ -90,22 +101,25 @@ public class Tank : Entity
     /// </summary>
     public float GetHullYaw()
     {
-        return _rotation.X;
+        return _yaw;
     }
     
 
     public virtual void Update(float elapsedTime)
-    {
-
+    { 
         // Yaw
-        _rotation.X -= _rotationDirection * _rotationSpeed * elapsedTime; // Resta para que el positivo sea hacia las agujas del reloj
+        var prevYaw = _yaw; 
+        _yaw -= _rotationDirection * _rotationSpeed * elapsedTime; // Resta para que el positivo sea hacia las agujas del reloj
+        
         var pi2 = MathF.PI * 2;
-        if (_rotation.X > pi2)
+        
+        if (_yaw> pi2)
         {
-            _rotation.X -= pi2;
+            _yaw -= pi2;
         }
 
-
+        Quaternion rotacionTanque = Quaternion.CreateFromYawPitchRoll(_yaw - prevYaw, 0, 0);
+        
         if (_speedingDirection != 0) // Está acelerando hacia adelante o atrás
         {
             _currentSpeed = MathF.MinMagnitude(
@@ -120,16 +134,33 @@ public class Tank : Entity
         {
             _currentSpeed = MathF.Max(absSpeed - _deceleration * elapsedTime, 0) * movingDirection;
         }
-
+        
         _position += _world.Forward * (_currentSpeed * elapsedTime);
+        _position.Y = _battlefield.GetHeightAt(_position.X, _position.Z);
 
+        
+        Vector3 normalTerreno = _battlefield.GetNormalAt(_position.X, _position.Z);
+        
+        Vector3 right = Vector3.Cross(_world.Forward, normalTerreno);
+        right.Normalize();
+        
+        Vector3 foward = Vector3.Cross(normalTerreno, right);
+        foward.Normalize();
+        
+        Matrix rotacionTerreno = Matrix.Identity;
+        rotacionTerreno.Forward = foward;
+        rotacionTerreno.Right = right;
+        rotacionTerreno.Up = normalTerreno;
+        
+        _rotation = rotacionTanque * Quaternion.CreateFromRotationMatrix(rotacionTerreno);
+            
         SetWorldMatrix();
 
         
         _turret.Update(elapsedTime);
         _canon.Update(elapsedTime);
     }
-
+    
     protected void Move(int direction)
     {
         _speedingDirection = direction;

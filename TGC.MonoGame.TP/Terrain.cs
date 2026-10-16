@@ -293,6 +293,33 @@ public class Terrain
 
         return MathHelper.Lerp(hx0, hx1, tz);
     }
+
+    public Vector3 GetNormalAt(float worldX, float worldZ)
+    {  
+        var half = _size / 2f;
+        var step = _size / (GridResolution - 1);
+
+        var gx = MathHelper.Clamp((worldX + half) / step, 0, GridResolution - 1);
+        var gz = MathHelper.Clamp((worldZ + half) / step, 0, GridResolution - 1);
+
+        var x0 = (int)MathF.Floor(gx);
+        var z0 = (int)MathF.Floor(gz);
+        
+        var x1 = Math.Min(x0 + 1, GridResolution - 1);
+        var z1 = Math.Min(z0 + 1, GridResolution - 1);
+        
+        float centerHeight = _heights[x0, z0];
+        float xHeigth = _heights[x1, z0]; 
+        float zHeigth = _heights[x0, z1];
+        
+        Vector3 dx = new Vector3(step, xHeigth - centerHeight, 0); 
+        Vector3 dz = new Vector3(0, zHeigth - centerHeight, step);
+
+        Vector3 normal = Vector3.Cross(dz, dx); 
+        
+        return Vector3.Normalize(normal);
+    }
+    
     
     public void Draw(GraphicsDevice device, Matrix view, Matrix projection)
     {

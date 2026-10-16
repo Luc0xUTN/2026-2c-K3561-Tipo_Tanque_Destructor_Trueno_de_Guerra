@@ -150,6 +150,11 @@ public class Battlefield
         return _terrain.GetHeightAt(x, z);
     }
 
+    public Vector3 GetNormalAt(float x, float z)
+    {
+        return _terrain.GetNormalAt(x, z);
+    }
+    
     // Punto de spawn del jugador (siempre A) — no expone _spawnA directo, mismo
     // patrón que GetHeightAt/IsNavigable: nadie fuera de Battlefield toca los
     // datos internos, todo pasa por un método público de la fachada.

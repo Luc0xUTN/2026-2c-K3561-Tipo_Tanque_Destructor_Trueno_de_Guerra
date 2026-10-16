@@ -8,7 +8,7 @@ public interface ICollidable
 
     Vector3 GetPosition();
     Vector3 GetScale();
-    Vector3 GetRotation();
+    Quaternion GetRotation();
     Matrix GetWorld();
 
     Collider Collider { get; }
