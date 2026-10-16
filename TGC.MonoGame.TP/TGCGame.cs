@@ -9,6 +9,7 @@ using TGC.MonoGame.TP.Collisions;
 using TGC.MonoGame.TP.Cameras;
 using TGC.MonoGame.TP.Tanks.TurretCanonMovementHandlers;
 using System.IO;
+using TGC.MonoGame.TP.scenes;
 
 namespace TGC.MonoGame.TP;
 
@@ -19,40 +20,9 @@ namespace TGC.MonoGame.TP;
 /// </summary>
 public class TGCGame : Game
 {
-    public const string ContentFolder3D = "Models/";
-    public const string ContentFolderEffects = "Effects/";
-    public const string ContentFolderMusic = "Music/";
-    public const string ContentFolderSounds = "Sounds/";
-    public const string ContentFolderSpriteFonts = "SpriteFonts/";
-    public const string ContentFolderTextures = "Textures/";
-    
-    private static readonly bool DebugIsometricCamera = false;
-
     private readonly GraphicsDeviceManager _graphics;
-    private PhysicsSystem _physicsSystem;
-
-    private bool _drawColliders = false;
     
-    private Matrix _projection;
-
-    private Battlefield _battlefield;
-
-    // Recursos de la mira (retículo) que se dibuja sobre la escena.
-    private SpriteBatch _spriteBatch;
-    private Texture2D _reticlePixel;
-
-    private int _centerX;
-    private int _centerY;
-    
-    private float _sensitivity = 0.005f;
-
-    private readonly Keys _keyFreeLook = Keys.C;
-
-    private Tank _tank;
-    private List<EnemyTank> _enemyTanks;
-    private BaseCamera _camera;
-
-    private TurretCanonMovementHandler _turretCanonMovementHandler;
+    private Scene _scene;
     
     /// <summary>
     ///     Constructor del juego.
@@ -70,7 +40,8 @@ public class TGCGame : Game
         Content.RootDirectory = "Content";
         // Hace que el mouse sea visible.
         IsMouseVisible = false;
-
+        
+        _scene = new GameScene(this); 
     }
 
     /// <summary>
@@ -79,70 +50,8 @@ public class TGCGame : Game
     /// </summary>
     protected override void Initialize()
     {
-        if (_drawColliders)
-            _physicsSystem = new DebugPhysicsSystem(GraphicsDevice);
-        else
-            _physicsSystem = new PhysicsSystem();
-
-        float mapSize = 300f;
-        _centerX = GraphicsDevice.Viewport.Width / 2;
-        _centerY = GraphicsDevice.Viewport.Height / 2;
+        _scene.Initialize();
         
-        _battlefield = new Battlefield(ContentFolderEffects + "BasicShader", Color.Green);
-        _battlefield.Initialize(GraphicsDevice, _physicsSystem, mapSize);
-
-        // El jugador siempre spawnea en el spawn A, sobre la altura real del
-        // terreno en ese punto (Battlefield.GetHeightAt).
-        var spawnPosition = _battlefield.GetSpawnA();
-        var spawnHeight = _battlefield.GetHeightAt(spawnPosition.X, spawnPosition.Y);
-
-        // La torreta y el cañón se apuntan con el mouse, que es lo que mueve la cámara.
-        _turretCanonMovementHandler = new TurretCanonCameraAimHandler();
-        _tank = new PlayerTank(new Vector3(spawnPosition.X, spawnHeight, spawnPosition.Y), Vector3.One, new Vector3(0,0,0), Color.Red, _battlefield);
-        _tank.Initialize();
-        
-        
-        // Enemigos: spawnean cerca del spawn B (el opuesto al jugador), separados
-        // entre sí para no superponerse. Radio de separación estimado a ojo contra
-        // el ancho del claro de spawn (22u) y el tamaño del tanque.
-        var enemySpawnCenter = _battlefield.GetSpawnB();
-        float[] enemyOffsetsX = { -10f, 0f, 10f };
-        _enemyTanks = new List<EnemyTank>();
-        foreach (var offsetX in enemyOffsetsX)
-        {
-            var enemyX = enemySpawnCenter.X + offsetX;
-            var enemyZ = enemySpawnCenter.Y;
-            var enemyHeight = _battlefield.GetHeightAt(enemyX, enemyZ);
-
-            var enemyAI = new AI(_tank, _battlefield);
-            var enemyTank = new EnemyTank(new Vector3(enemyX, enemyHeight, enemyZ), Vector3.One, new Vector3(0, 0, 0), Color.Blue, enemyAI, _battlefield);
-            enemyTank.Initialize();
-            _enemyTanks.Add(enemyTank);
-        }
-
-        // Apago el backface culling.
-        // Esto se hace por un problema en el diseno del modelo del logo de la materia.
-        // Una vez que empiecen su juego, esto no es mas necesario y lo pueden sacar.
-        var rasterizerState = new RasterizerState();
-        rasterizerState.CullMode = CullMode.None;
-        GraphicsDevice.RasterizerState = rasterizerState;
-        // Seria hasta aca.
-
-        // Configuramos nuestras matrices de la escena.
-
-        _camera = DebugIsometricCamera
-            ? new IsometricCamera(new Vector3(200, 220, 200), Vector3.Zero, Vector3.Up)
-            : new OrbitalCamera(_tank, 20, _centerX, _centerY, _sensitivity, _battlefield.GetHeightAt);
-        _camera.Initialize();
-        
-        _projection =
-            Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 1, (int) Math.Ceiling(Math.Sqrt(Math.Pow(mapSize, 2)  + Math.Pow(mapSize, 2))));
-
-        Mouse.SetPosition(_centerX,_centerY);
-
-        _physicsSystem.Add(_tank);
-        _enemyTanks.ForEach(t => _physicsSystem.Add(t));
-
         base.Initialize();
     }
 
@@ -153,29 +62,8 @@ public class TGCGame : Game
     /// </summary>
     protected override void LoadContent()
     {
-        _battlefield.LoadContent(Content, ContentFolder3D);
-
-        Effect effect = Content.Load<Effect>(ContentFolderEffects + "BasicShader");
-
-        // Cada tanque carga el modelo con su propio ContentManager. Si todos
-        // comparten uno (como antes), ContentManager cachea el Model por path y
-        // los 4 tanques terminan compartiendo los mismos ModelBone de torreta y
-        // cañón -- el último que actualiza en el frame pisa a los demás (ver
-        // progress/09 en el repo de contexto).
-        Model playerModel = new ContentManager(Services, Content.RootDirectory).Load<Model>(ContentFolder3D + "tanks/Panzer/Panzer");
-        _tank.LoadContent(playerModel, effect, "Turret", "Cannon");
-
-        foreach (var enemyTank in _enemyTanks)
-        {
-            Model enemyModel = new ContentManager(Services, Content.RootDirectory).Load<Model>(ContentFolder3D + "tanks/Panzer/Panzer");
-            enemyTank.LoadContent(enemyModel, effect, "Turret", "Cannon");
-        }
-
-        // Un único pixel blanco reescalado alcanza para armar la mira del HUD.
-        _spriteBatch = new SpriteBatch(GraphicsDevice);
-        _reticlePixel = new Texture2D(GraphicsDevice, 1, 1);
-        _reticlePixel.SetData(new[] { Color.White });
-
+        _scene.LoadContent();
+        
         base.LoadContent();
     }
 
@@ -186,7 +74,6 @@ public class TGCGame : Game
     /// </summary>
     protected override void Update(GameTime gameTime)
     {
-        
         // Capturar Input teclado
         if (Keyboard.GetState().IsKeyDown(Keys.Escape))
         {
@@ -196,37 +83,7 @@ public class TGCGame : Game
         
         var elapsedTime = Convert.ToSingle(gameTime.ElapsedGameTime.TotalSeconds);
 
-        KeyboardState keyboardState = Keyboard.GetState();
-        MouseState mouseState = Mouse.GetState();
-
-        // Mantener esta tecla equivale al Free Look de War Thunder: el mouse mueve la cámara
-        // y la torreta y el cañón se quedan clavados en el último punto apuntado.
-        bool freeLook = keyboardState.IsKeyDown(_keyFreeLook);
-
-        // La cámara es la única que consume el mouse.
-        _camera.IsFreeLook = freeLook;
-        _camera.Update(keyboardState, mouseState, elapsedTime);
-
-        // La torreta y el cañón siguen a la cámara, salvo durante el free look, en cuyo caso quedan
-        // donde estaban y slewan hasta la nueva puntería en el momento de soltarla.
-        _turretCanonMovementHandler.Update(
-            _tank.GetTurret(),
-            _tank.GetCanon(),
-            _camera.Yaw - _tank.GetHullYaw(),
-            _camera.Pitch,
-            freeLook
-        );
-        
-        _tank.Update(elapsedTime);
-        
-        foreach (var enemyTank in _enemyTanks)
-        {
-            enemyTank.Update(elapsedTime);
-        }
-
-        Mouse.SetPosition(_centerX,_centerY);
-        
-        _physicsSystem.Update();
+        _scene.Update(elapsedTime);
 
         base.Update(gameTime);
     }
@@ -240,67 +97,15 @@ public class TGCGame : Game
         GraphicsDevice.Clear(Color.Black);
         GraphicsDevice.DepthStencilState = DepthStencilState.Default;
         
-        var view = _camera.GetView();
-        
-        _battlefield.Draw(GraphicsDevice, view, _projection);
-        _tank.Draw(GraphicsDevice, view, _projection);
-        
-        foreach (var enemyTank in _enemyTanks)
-        {
-            enemyTank.Draw(GraphicsDevice, _camera.GetView(), _projection);
-        }
-
-        if (_physicsSystem is DebugPhysicsSystem)
-            ((DebugPhysicsSystem) _physicsSystem).Draw(view, _projection);
-
-        DebugManager.Draw(GraphicsDevice, view, _projection);
-
-        _spriteBatch.Begin();
-        DrawReticle(view);
-        _spriteBatch.End();
-    }
-
-    // Mira : la cruz se proyecta desde la dirección que marca el mouse, así que
-    // sigue al mouse en pantalla y la cámara la recentra a medida que se acomoda detrás del tanque.
-    // La torreta y el cañón persiguen esa misma dirección, más lento todavía.
-    private void DrawReticle(Matrix view)
-    {
-        const int gap = 5;
-        const int arm = 14;
-        const int thickness = 2;
-        int half = thickness / 2;
-        Color color = new Color(0.25f, 1f, 0.25f, 0.9f);
-
-        // Punto lejano en la dirección de puntería, saliendo de la torreta.
-        Vector3 aimPoint = _tank.GetPosition() + Vector3.Up * 2.5f + _camera.AimDirection * 200f;
-
-        Vector3 screen = GraphicsDevice.Viewport.Project(aimPoint, _projection, view, Matrix.Identity);
-        if (screen.Z < 0f || screen.Z > 1f)
-            return; // quedó detrás de la cámara
-
-        // Se mantiene siempre dentro de la pantalla, aun apuntando al límite del rango del cañón.
-        int margin = gap + arm;
-        int cx = (int)MathHelper.Clamp(screen.X, margin, GraphicsDevice.Viewport.Width - margin);
-        int cy = (int)MathHelper.Clamp(screen.Y, margin, GraphicsDevice.Viewport.Height - margin);
-
-        // Brazos horizontales.
-        _spriteBatch.Draw(_reticlePixel, new Rectangle(cx - gap - arm, cy - half, arm, thickness), color);
-        _spriteBatch.Draw(_reticlePixel, new Rectangle(cx + gap, cy - half, arm, thickness), color);
-        // Brazos verticales.
-        _spriteBatch.Draw(_reticlePixel, new Rectangle(cx - half, cy - gap - arm, thickness, arm), color);
-        _spriteBatch.Draw(_reticlePixel, new Rectangle(cx - half, cy + gap, thickness, arm), color);
-        // Punto central.
-        _spriteBatch.Draw(_reticlePixel, new Rectangle(cx - 1, cy - 1, 2, 2), color);
+        _scene.Draw();
     }
 
     /// <summary>
     ///     Libero los recursos que se cargaron en el juego.
     /// </summary>
-    protected override void UnloadContent()
+    protected override void UnloadContent() 
     {
-        // Libero los recursos.
-        _reticlePixel?.Dispose();
-        _spriteBatch?.Dispose();
+        _scene.Unload(); 
         Content.Unload();
 
         base.UnloadContent();

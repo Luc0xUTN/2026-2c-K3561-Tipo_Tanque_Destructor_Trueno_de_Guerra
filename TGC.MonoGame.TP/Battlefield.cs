@@ -131,7 +131,7 @@ public class Battlefield
         return false;
     }
 
-    public void LoadContent(ContentManager content, string contentFolder3D)
+    public void LoadContent(Microsoft.Xna.Framework.Content.ContentManager content, string contentFolder3D)
     {
         _terrain.LoadContent(content);
         _forest.LoadContent(content, contentFolder3D, _shaderRoute);

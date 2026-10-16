@@ -91,7 +91,7 @@ public class Forest
         }
     }
 
-    public void LoadContent(ContentManager content, string contentFolder3D, string shaderRoute)
+    public void LoadContent(Microsoft.Xna.Framework.Content.ContentManager content, string contentFolder3D, string shaderRoute)
     {
         var treeModel = content.Load<Model>(contentFolder3D + "forest/Tree/Tree");
         var effect = content.Load<Effect>(shaderRoute);
