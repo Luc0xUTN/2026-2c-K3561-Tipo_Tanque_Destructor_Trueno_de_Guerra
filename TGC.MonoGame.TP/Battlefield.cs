@@ -43,13 +43,16 @@ public class Battlefield
     private Vector2 _spawnB;
     private Vector2 _center;
 
+    // Flag que indica si se cargo el contenido de la entidad 
+    public bool FlContentLoaded { get; private set; } = false;
+    
     public Battlefield(string shaderRoute, Color terrainColor)
     {
         _shaderRoute = shaderRoute;
         _terrainColor = terrainColor;
     }
 
-    public void Initialize(GraphicsDevice device, PhysicsSystem physicsSystem, float mapSize)
+    public void Initialize(GraphicsDevice device, float mapSize)
     {
         // Cada módulo deriva su propia seed independiente a partir de la
         // MasterSeed, en vez de compartir un único stream secuencial: así,
@@ -68,8 +71,9 @@ public class Battlefield
         // (GetHeightAt) y qué zonas son navegables (IsNavigable) para llenar
         // únicamente el complemento de los carriles con árboles/rocas.
         _forest = new Forest();
-        _forest.Initialize(new Vector2(mapSize, mapSize), forestSeed, _terrain.GetHeightAt, IsNavigable, physicsSystem);
+        _forest.Initialize(new Vector2(mapSize, mapSize), forestSeed, _terrain.GetHeightAt, IsNavigable);
     }
+    
 
     private void GenerateSpawnsAndLanes(int lanesSeed)
     {
@@ -135,8 +139,14 @@ public class Battlefield
     {
         _terrain.LoadContent(content);
         _forest.LoadContent(content, contentFolder3D, _shaderRoute);
+        FlContentLoaded = true; 
     }
 
+    public void AddEntitiesToPhyisicSystem(PhysicsSystem physicsSystem)
+    {
+        _forest.AddEntitiesToPhyisicSystem(physicsSystem);
+    }
+    
     public void Draw(GraphicsDevice device, Matrix view, Matrix projection)
     {
         _terrain.Draw(device, view, projection);

@@ -23,7 +23,6 @@ public class Forest
         int seed,
         Func<float, float, float> getHeightAt,
         Func<float, float, bool> isNavigable,
-        PhysicsSystem physicsSystem,
         float spacing = 5f
         )
     {
@@ -85,12 +84,16 @@ public class Forest
 
                     _trees.Add(tree);
                     _props.Add(tree);
-                    physicsSystem.Add(tree);
                 }
             }
         }
     }
 
+    public void AddEntitiesToPhyisicSystem(PhysicsSystem physicsSystem)
+    {
+        _trees.ForEach(t => physicsSystem.Add(t));
+    }
+    
     public void LoadContent(Microsoft.Xna.Framework.Content.ContentManager content, string contentFolder3D, string shaderRoute)
     {
         var treeModel = content.Load<Model>(contentFolder3D + "forest/Tree/Tree");

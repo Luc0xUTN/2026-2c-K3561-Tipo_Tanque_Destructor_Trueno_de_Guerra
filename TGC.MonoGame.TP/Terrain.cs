@@ -62,7 +62,7 @@ public class Terrain
         _color = color;
     }
 
-    public void LoadContent(Microsoft.Xna.Framework.Content.ContentManager content)
+    public void LoadContent(ContentManager content)
     {
         _effect = content.Load<Effect>(_shaderRoute);
     }

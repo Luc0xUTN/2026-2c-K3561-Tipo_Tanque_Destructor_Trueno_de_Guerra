@@ -7,6 +7,8 @@ namespace TGC.MonoGame.TP;
 // Responsabilidad: Representar a las cámaras del juego
 public class IsometricCamera : BaseCamera
 {
+    private const float _angularSpeed = 0.3f; 
+    
     private Vector3 _position;
     private Vector3 _target;
     private Vector3 _up;
@@ -25,18 +27,14 @@ public class IsometricCamera : BaseCamera
         SetView(_position, _target, _up);
     }
     
-    public override void Update(KeyboardState keys, MouseState mouseState, float elapsedTime)
+    public override void Update(float elapsedTime)
     {
-        Vector3 cameraVelocity =  _speed * elapsedTime * Vector3.One;
         
-        if (keys.IsKeyDown(Keys.Down))
-        {
-            _position += cameraVelocity;
-        }
-        else if (keys.IsKeyDown(Keys.Up))
-        {
-            _position -= cameraVelocity;
-        }
+        float difAngle = _angularSpeed * elapsedTime;
+        
+        Quaternion rotation = Quaternion.CreateFromAxisAngle(Vector3.Up, difAngle); 
+        
+        _position = Vector3.Transform(_position, Matrix.CreateFromQuaternion(rotation)); 
         
         SetView(_position, _target, _up);
     }

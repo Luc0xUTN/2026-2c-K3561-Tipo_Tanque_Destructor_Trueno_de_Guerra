@@ -93,8 +93,10 @@ public class OrbitalCamera : BaseCamera
         this.SetView(position, lookAt, Vector3.Up);
     }
 
-    public override void Update(KeyboardState keyboardState, MouseState mouseState, float elapsedTime)
+    public override void Update(float elapsedTime)
     {
+        MouseState mouseState = Mouse.GetState();
+        
         // El mouse está capturado y el juego lo recentera en cada frame, así que este delta es
         // el movimiento realizado durante el frame.
         float deltaX = mouseState.X - _centerX;

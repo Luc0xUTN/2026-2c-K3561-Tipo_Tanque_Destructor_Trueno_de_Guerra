@@ -12,8 +12,7 @@ namespace TGC.MonoGame.TP.scenes;
 
 public class GameScene : Scene
 {
-    private const float MapSize = 300f;
-    private float _sensitivity = 0.005f;
+
     
     private bool _drawColliders = false;
     private static readonly bool DebugIsometricCamera = false;
@@ -70,8 +69,9 @@ public class GameScene : Scene
         if (_battlefield == null)
         {
             _battlefield = new Battlefield(ContentPaths.ContentFolderEffects + "BasicShader", Color.Green);
-            _battlefield.Initialize(_device, _physicsSystem, MapSize);
+            _battlefield.Initialize(_device, GameSettings.MapSize);
         }
+        _battlefield.AddEntitiesToPhyisicSystem(_physicsSystem);
         
         // El jugador siempre spawnea en el spawn A, sobre la altura real del
         // terreno en ese punto (Battlefield.GetHeightAt).
@@ -101,23 +101,30 @@ public class GameScene : Scene
             _enemyTanks.Add(enemyTank);
         }
         
-        _camera = DebugIsometricCamera
+        _camera = GameSettings.DebugMode
             ? new IsometricCamera(new Vector3(200, 220, 200), Vector3.Zero, Vector3.Up)
-            : new OrbitalCamera(_tank, 20, _centerX, _centerY, _sensitivity, _battlefield.GetHeightAt);
+            : new OrbitalCamera(_tank, 20, _centerX, _centerY, GameSettings.Sensitivity, _battlefield.GetHeightAt);
         _camera.Initialize();
-        
+
+
+        int farPlaneDistance = (int) Math.Ceiling(Math.Sqrt(Math.Pow(GameSettings.MapSize, 2) + Math.Pow(GameSettings.MapSize, 2))); 
         _projection =
-            Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, _device.Viewport.AspectRatio, 1, (int) Math.Ceiling(Math.Sqrt(Math.Pow(MapSize, 2)  + Math.Pow(MapSize, 2))));
+            Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, _device.Viewport.AspectRatio, 1, farPlaneDistance);
         
         Mouse.SetPosition(_centerX,_centerY);
 
         _physicsSystem.Add(_tank);
         _enemyTanks.ForEach(t => _physicsSystem.Add(t));
+
+        _game.IsMouseVisible = false; 
     }
 
     public void LoadContent()
     {
-        _battlefield.LoadContent(_contentManager, ContentPaths.ContentFolder3D);
+        if (!_battlefield.FlContentLoaded)
+        {
+            _battlefield.LoadContent(_contentManager, ContentPaths.ContentFolder3D);
+        }
 
         Effect effect = _contentManager.Load<Effect>(ContentPaths.ContentFolderEffects + "BasicShader");
 
@@ -152,7 +159,7 @@ public class GameScene : Scene
 
         // La cámara es la única que consume el mouse.
         _camera.IsFreeLook = freeLook;
-        _camera.Update(keyboardState, mouseState, elapsedTime);
+        _camera.Update(elapsedTime);
 
         // La torreta y el cañón siguen a la cámara, salvo durante el free look, en cuyo caso quedan
         // donde estaban y slewan hasta la nueva puntería en el momento de soltarla.
@@ -232,7 +239,12 @@ public class GameScene : Scene
         // Punto central.
         _spriteBatch.Draw(_reticlePixel, new Rectangle(cx - 1, cy - 1, 2, 2), color);
     }
-
+    
+    public void SetBattlefield(Battlefield battlefield)
+    {
+        this._battlefield = battlefield;
+    }
+    
     public void Unload()
     {
         _contentManager.Unload();   

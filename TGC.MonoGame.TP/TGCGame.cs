@@ -39,8 +39,7 @@ public class TGCGame : Game
         // Para que el juego sea pantalla completa se puede usar Graphics IsFullScreen.
         // Carpeta raiz donde va a estar toda la Media.
         Content.RootDirectory = "Content";
-        // Hace que el mouse sea visible.
-        IsMouseVisible = false;
+
         
         _scene = new GameScene(this); 
     }

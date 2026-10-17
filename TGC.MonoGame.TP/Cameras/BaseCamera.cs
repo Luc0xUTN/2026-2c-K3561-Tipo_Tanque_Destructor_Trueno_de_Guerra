@@ -41,7 +41,7 @@ public abstract class BaseCamera
 
     public abstract void Initialize();
     
-    public abstract void Update(KeyboardState keyboardState, MouseState mouseState, float elapsedTime);
+    public abstract void Update(float elapsedTime);
     
     
     public void SetView(Vector3 position, Vector3 target, Vector3 up)
