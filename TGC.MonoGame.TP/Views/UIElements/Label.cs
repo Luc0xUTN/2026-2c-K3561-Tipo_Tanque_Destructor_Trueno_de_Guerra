@@ -4,7 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace TGC.MonoGame.TP.Views.UIElements;
 
-public class text
+public class Label
 {
     public string Text { get; set; }
     public Vector2 Position { get; set; }
@@ -17,7 +17,7 @@ public class text
     private float _currentScale = 1.0f;
     private float _totalTime = 0f;
 
-    public text(SpriteFont font, string text, Vector2 position, bool isCentered = false)
+    public Label(SpriteFont font, string text, Vector2 position, bool isCentered = false)
     {
         _font = font;
         Text = text;

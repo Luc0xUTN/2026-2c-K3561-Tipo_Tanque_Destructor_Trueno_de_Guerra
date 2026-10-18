@@ -1,17 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using System.Diagnostics;
-using TGC.MonoGame.TP.Collisions;
-using TGC.MonoGame.TP.Cameras;
-using TGC.MonoGame.TP.Tanks.TurretCanonMovementHandlers;
-using System.IO;
-using ImGuiNET;
 using TGC.MonoGame.TP.scenes;
-
 namespace TGC.MonoGame.TP;
 
 /// <summary>
@@ -41,7 +32,7 @@ public class TGCGame : Game
         Content.RootDirectory = "Content";
 
         
-        _scene = new GameScene(this); 
+        _scene = new MenuScene(this); 
     }
 
     /// <summary>
@@ -73,9 +64,11 @@ public class TGCGame : Game
     ///     ante ellas.
     /// </summary>
     protected override void Update(GameTime gameTime)
-    {
+    {  
+        KeyboardState keyboardState = Keyboard.GetState();
+        
         // Capturar Input teclado
-        if (Keyboard.GetState().IsKeyDown(Keys.Escape))
+        if (keyboardState.IsKeyDown(Keys.Escape))
         {
             //Salgo del juego.
             Exit();

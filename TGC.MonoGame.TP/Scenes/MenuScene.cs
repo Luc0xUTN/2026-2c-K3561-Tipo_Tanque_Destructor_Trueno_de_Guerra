@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using TGC.MonoGame.TP.Cameras;
+using TGC.MonoGame.TP.Views;
 
 namespace TGC.MonoGame.TP.scenes;
 
@@ -20,13 +21,22 @@ public class MenuScene : Scene
     
     private Matrix _projection;
     
+    private SpriteFont _menuFont;
+
+    private View _view;
+
+    private SpriteBatch _spriteBatch;
+    
+    private bool _flTransition = false;
+
+    public bool FlTransition { get => _flTransition; set =>  _flTransition = value ;}
+    
     public MenuScene(Game game)
     {
         _game = game; 
     }
 
 
-    private bool _flTransition = false;
     
     public void Initialize()
     {
@@ -45,12 +55,17 @@ public class MenuScene : Scene
             Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, _device.Viewport.AspectRatio, 1, farPlaneDistance);
         
         _game.IsMouseVisible = true; 
+        
+        _spriteBatch = new SpriteBatch(_device);
     }
 
     public void LoadContent()
     {
         _battlefield.LoadContent(_game.Content, ContentPaths.ContentFolder3D); // Lo cargo al contenido global debido a que no se debería destruir en ningún momento
         
+        _menuFont = _contentManager.Load<SpriteFont>(ContentPaths.ContentFolderSpriteFonts + "Menu");
+        _view = new MenuView(_device, this, _menuFont, _spriteBatch);
+        _view.Initialize();
     }
 
     public void Update(float elapsedTime)
@@ -64,12 +79,15 @@ public class MenuScene : Scene
             _flTransition = true;
         }
         
+        _view.Update();
         _camera.Update(elapsedTime);
     }
 
     public void Draw()
     {
         _battlefield.Draw(_device, _camera.GetView(),  _projection);
+        
+        _view.Draw();
     }
 
     public void Unload()
