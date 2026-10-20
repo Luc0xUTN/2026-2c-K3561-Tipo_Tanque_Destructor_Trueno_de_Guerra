@@ -30,6 +30,13 @@ public class MenuScene : Scene
     private bool _flTransition = false;
 
     public bool FlTransition { get => _flTransition; set =>  _flTransition = value ;}
+
+    // Flanco de subida para "cualquier tecla" -- sin esto, si ya había una
+    // tecla apretada al entrar a este Update (ej. volviendo desde GameScene
+    // con una tecla de movimiento todavía presionada), GetPressedKeyCount()
+    // disparaba la transición en el primer frame, sin que el jugador la
+    // haya apretado realmente en el menú.
+    private KeyboardState _previousKeyboardState;
     
     public MenuScene(Game game)
     {
@@ -54,9 +61,14 @@ public class MenuScene : Scene
         _projection =
             Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, _device.Viewport.AspectRatio, 1, farPlaneDistance);
         
-        _game.IsMouseVisible = true; 
-        
+        _game.IsMouseVisible = true;
+
         _spriteBatch = new SpriteBatch(_device);
+
+        // Se toma el estado del teclado en este momento como "ya apretada" --
+        // así una tecla que venía sostenida desde antes de entrar al menú no
+        // cuenta como una tecla nueva en el primer Update.
+        _previousKeyboardState = Keyboard.GetState();
     }
 
     public void LoadContent()
@@ -73,12 +85,18 @@ public class MenuScene : Scene
         KeyboardState keyboardState = Keyboard.GetState();
         MouseState mouseState = Mouse.GetState();
 
-
-        if (keyboardState.GetPressedKeyCount() > 0)
+        // Transiciona solo con una tecla REALMENTE nueva (que no estuviera
+        // apretada el frame anterior) -- ver comentario de _previousKeyboardState.
+        foreach (var key in keyboardState.GetPressedKeys())
         {
-            _flTransition = true;
+            if (!_previousKeyboardState.IsKeyDown(key))
+            {
+                _flTransition = true;
+                break;
+            }
         }
-        
+        _previousKeyboardState = keyboardState;
+
         _view.Update();
         _camera.Update(elapsedTime);
     }

@@ -60,6 +60,11 @@ public class Tank : Entity
     public int Health { get; private set; } = MaxHealth;
     public bool IsDead => Health <= 0;
 
+    // Para el HUD: 0..1. El cast a float es necesario porque Health y
+    // MaxHealth son ambos int -- sin él, Health/MaxHealth sería división
+    // entera (truncada a 0 salvo que Health == MaxHealth).
+    public float HealthRatio => (float)Health / MaxHealth;
+
     public Tank(Vector3 position,Vector3 scale, Vector3 rotation, Color color, Battlefield battlefield) : base(position, scale, rotation, color )
     {
         IsSolid = true;

@@ -7,6 +7,7 @@ using Microsoft.Xna.Framework.Input;
 using TGC.MonoGame.TP.Cameras;
 using TGC.MonoGame.TP.Collisions;
 using TGC.MonoGame.TP.Tanks.TurretCanonMovementHandlers;
+using TGC.MonoGame.TP.Views;
 
 namespace TGC.MonoGame.TP.scenes;
 
@@ -40,6 +41,11 @@ public class GameScene : Scene
     // Recursos de la mira (retículo) que se dibuja sobre la escena.
     private SpriteBatch _spriteBatch;
     private Texture2D _reticlePixel;
+
+    // HUD (vida del jugador, contador de enemigos) -- mismo SpriteBatch/pixel
+    // que la mira, se dibuja en el mismo Begin()/End().
+    private SpriteFont _hudFont;
+    private GameHudView _hudView;
 
     private Game _game;
     private GraphicsDevice _device;
@@ -159,6 +165,11 @@ public class GameScene : Scene
         _spriteBatch = new SpriteBatch(_device);
         _reticlePixel = new Texture2D(_device, 1, 1);
         _reticlePixel.SetData(new[] { Color.White });
+
+        // Reusa la misma fuente del menú -- no hay una fuente propia del HUD todavía.
+        _hudFont = _contentManager.Load<SpriteFont>(ContentPaths.ContentFolderSpriteFonts + "Menu");
+        _hudView = new GameHudView(_device, _hudFont, _spriteBatch, _reticlePixel, _tank, _enemyTanks);
+        _hudView.Initialize();
     }
 
     public void Update(float elapsedTime)
@@ -220,6 +231,8 @@ public class GameScene : Scene
         }
         _enemyTanks.RemoveAll(e => e.IsDead);
 
+        _hudView.Update();
+
         Mouse.SetPosition(_centerX,_centerY);
 
         _physicsSystem.Update();
@@ -274,8 +287,9 @@ public class GameScene : Scene
 
         _spriteBatch.Begin();
          DrawReticle(view, _device);
+        _hudView.Draw();
         _spriteBatch.End();
-    }   
+    }
     
     // TODO: Este método junto a todo lo que tiene que ver con el dibujo del reticulo tiene que ser abstraido a una clase debido 
     // TODO: A que no es responsabilidad del TGCGame y ahora tampoco de GameScene implementar la lógica de dibuado de un reticulo
