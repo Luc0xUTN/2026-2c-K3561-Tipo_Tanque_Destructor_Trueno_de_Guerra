@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
@@ -28,7 +29,7 @@ public class MenuScene : Scene
     private SpriteBatch _spriteBatch;
     
     private bool _flTransition = false;
-
+    
     public bool FlTransition { get => _flTransition; set =>  _flTransition = value ;}
 
     // Flanco de subida para "cualquier tecla" -- sin esto, si ya había una
@@ -52,7 +53,7 @@ public class MenuScene : Scene
 
         Vector3 camPosition = new Vector3(150, 200, 150);
         
-        _camera = new IsometricCamera(camPosition, Vector3.Zero, Vector3.Up);
+        _camera = new IsometricCamera(camPosition, Vector3.Zero, Vector3.Up, 0.15f);
         
         _battlefield = new Battlefield(ContentPaths.ContentFolderEffects + "BasicShader", Color.Green);
         _battlefield.Initialize(_device, GameSettings.MapSize); 
@@ -76,7 +77,7 @@ public class MenuScene : Scene
         _battlefield.LoadContent(_game.Content, ContentPaths.ContentFolder3D); // Lo cargo al contenido global debido a que no se debería destruir en ningún momento
         
         _menuFont = _contentManager.Load<SpriteFont>(ContentPaths.ContentFolderSpriteFonts + "Menu");
-        _view = new MenuView(_device, this, _menuFont, _spriteBatch);
+        _view = new MenuView(_device, this, _menuFont, _spriteBatch, _game.Exit);
         _view.Initialize();
     }
 
@@ -127,4 +128,14 @@ public class MenuScene : Scene
         
         return gameScene;
     }
+
+    public EventHandler GetSetView(View view)
+    {
+        return (object sender, EventArgs args) =>
+        {
+            _view = view;
+        }; 
+    }
+
+
 }

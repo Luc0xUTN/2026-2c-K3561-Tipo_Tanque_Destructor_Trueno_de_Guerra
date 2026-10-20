@@ -70,7 +70,6 @@ public class TGCGame : Game
         // Capturar Input teclado
         if (keyboardState.IsKeyDown(Keys.Escape))
         {
-            //Salgo del juego.
             Exit();
         }
         

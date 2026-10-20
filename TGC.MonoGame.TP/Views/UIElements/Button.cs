@@ -7,16 +7,17 @@ public class Button
     {
         private SpriteFont _font;
         private string _text;
+
+        private Texture2D _icon;
+
         private Rectangle _bounds; 
-        
         private Color _normalColor = Color.White;
-        private Color _hoverColor = Color.Yellow;
+        private Color _hoverColor = Color.Yellow; 
         private Color _currentColor;
 
         private MouseState _previousMouseState;
 
         public bool IsCentered { get; private set; }
-
         public event EventHandler Click;
 
         public Button(SpriteFont font, string text, Vector2 position, bool isCentered = false)
@@ -26,7 +27,20 @@ public class Button
             IsCentered = isCentered;
             
             Vector2 size = _font.MeasureString(text);
+            CalculateBounds(position, size);
+        }
 
+        public Button(Texture2D icon, Vector2 position, float scale = 1.0f, bool isCentered = false)
+        {
+            _icon = icon;
+            IsCentered = isCentered;
+            
+            Vector2 size = new Vector2(icon.Width * scale, icon.Height * scale);
+            CalculateBounds(position, size);
+        }
+
+        private void CalculateBounds(Vector2 position, Vector2 size)
+        {
             int x = (int)position.X;
             int y = (int)position.Y;
 
@@ -37,7 +51,6 @@ public class Button
             }
 
             _bounds = new Rectangle(x, y, (int)size.X, (int)size.Y);
-            
             _currentColor = _normalColor;
         }
 
@@ -45,7 +58,7 @@ public class Button
         {
             MouseState currentMouseState = Mouse.GetState();
             Point mousePosition = new Point(currentMouseState.X, currentMouseState.Y);
-            
+
             if (_bounds.Contains(mousePosition))
             {
                 _currentColor = _hoverColor;
@@ -66,6 +79,13 @@ public class Button
 
         public void Draw(SpriteBatch spriteBatch)
         {
-            spriteBatch.DrawString(_font, _text, new Vector2(_bounds.X, _bounds.Y), _currentColor);
+            if (_icon != null)
+            {
+                spriteBatch.Draw(_icon, _bounds, _currentColor);
+            }
+            else if (_font != null && !string.IsNullOrEmpty(_text))
+            {
+                spriteBatch.DrawString(_font, _text, new Vector2(_bounds.X, _bounds.Y), _currentColor);
+            }
         }
     }
