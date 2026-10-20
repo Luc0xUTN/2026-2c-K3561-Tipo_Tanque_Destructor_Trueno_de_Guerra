@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Media;
 using TGC.MonoGame.TP.Cameras;
 using TGC.MonoGame.TP.Collisions;
 using TGC.MonoGame.TP.Tanks.TurretCanonMovementHandlers;
@@ -13,10 +15,6 @@ namespace TGC.MonoGame.TP.scenes;
 
 public class GameScene : Scene
 {
-
-    
-    private bool _drawColliders = false;
-    
     private PhysicsSystem _physicsSystem;
 
     private int _centerX;
@@ -26,20 +24,25 @@ public class GameScene : Scene
     
     private Battlefield _battlefield = null;
     
-    
     // TODO: Esto debe ser pasado a la clase tanque debido a que el tanque debe saber como se mueve su torreta y cañon
     private TurretCanonCameraAimHandler _turretCanonMovementHandler; 
     private Tank _tank;
     private List<EnemyTank> _enemyTanks;
     private List<Projectile> _projectiles;
 
+    private Song _backgroundSong;
+
+    private SoundEffect _shootSound;
+    private SoundEffect _explosionSound;
+    private SoundEffect _impactSound; 
+    
     private Matrix _projection;
 
     private readonly Keys _keyFreeLook = Keys.C;
 
     // Recursos de la mira (retículo) que se dibuja sobre la escena.
     private SpriteBatch _spriteBatch;
-    private Texture2D _reticlePixel;
+    private Texture2D _pixel;
 
     // HUD (vida del jugador, contador de enemigos) -- mismo SpriteBatch/pixel
     // que la mira, se dibuja en el mismo Begin()/End().
@@ -70,7 +73,7 @@ public class GameScene : Scene
         _contentManager = new ContentManager(_game.Services, "Content");
 
         _device = _game.Services.GetService<IGraphicsDeviceService>().GraphicsDevice;
-        if (_drawColliders)
+        if (GameSettings.DebugMode)
             _physicsSystem = new DebugPhysicsSystem(_device);
         else
             _physicsSystem = new PhysicsSystem();
@@ -115,9 +118,7 @@ public class GameScene : Scene
 
         _projectiles = new List<Projectile>();
 
-        _camera = GameSettings.DebugMode
-            ? new IsometricCamera(new Vector3(200, 220, 200), Vector3.Zero, Vector3.Up)
-            : new OrbitalCamera(_tank, 20, _centerX, _centerY, GameSettings.Sensitivity, _battlefield.GetHeightAt);
+        _camera = new OrbitalCamera(_tank, 20, _centerX, _centerY, GameSettings.Sensitivity, _battlefield.GetHeightAt);
         _camera.Initialize();
 
 
@@ -141,7 +142,7 @@ public class GameScene : Scene
         }
 
         _effect = _contentManager.Load<Effect>(ContentPaths.ContentFolderEffects + "BasicShader");
-
+        
         // Cada tanque carga el modelo con su propio ContentManager. Si todos
         // comparten uno (como antes), ContentManager cachea el Model por path y
         // los 4 tanques terminan compartiendo los mismos ModelBone de torreta y
@@ -159,13 +160,24 @@ public class GameScene : Scene
 
         // Un único pixel blanco reescalado alcanza para armar la mira del HUD.
         _spriteBatch = new SpriteBatch(_device);
-        _reticlePixel = new Texture2D(_device, 1, 1);
-        _reticlePixel.SetData(new[] { Color.White });
+        _pixel = new Texture2D(_device, 1, 1);
+        _pixel.SetData(new[] { Color.White });
 
         // Reusa la misma fuente del menú -- no hay una fuente propia del HUD todavía.
         _hudFont = _contentManager.Load<SpriteFont>(ContentPaths.ContentFolderSpriteFonts + "Menu");
-        _hudView = new GameHudView(_device, _hudFont, _spriteBatch, _reticlePixel, _tank, _enemyTanks, _camera, _projection);
+        _hudView = new GameHudView(_device, _hudFont, _spriteBatch, _pixel, _tank, _enemyTanks, _camera, _projection);
         _hudView.Initialize();
+
+        _shootSound = _contentManager.Load<SoundEffect>(ContentPaths.ContentFolderSounds + "Shoot");
+        _impactSound = _contentManager.Load<SoundEffect>(ContentPaths.ContentFolderSounds + "impact"); 
+        _explosionSound = _contentManager.Load<SoundEffect>(ContentPaths.ContentFolderSounds + "Explosion"); 
+        
+        _backgroundSong =
+            _contentManager.Load<Song>(ContentPaths.ContentFolderMusic + "Richard Wagner - Ride of The Valkyries");
+
+        MediaPlayer.IsRepeating = true;
+        MediaPlayer.Volume = GameSettings.MusicVolumen;
+        MediaPlayer.Play(_backgroundSong);
     }
 
     public void Update(float elapsedTime)
@@ -224,6 +236,7 @@ public class GameScene : Scene
         foreach (var deadEnemy in _enemyTanks.FindAll(e => e.IsDead))
         {
             _physicsSystem.Remove(deadEnemy);
+            _explosionSound.Play(GameSettings.SoundEffectsVolumen, 0f, 0f);
         }
         _enemyTanks.RemoveAll(e => e.IsDead);
 
@@ -257,6 +270,7 @@ public class GameScene : Scene
         projectile.Initialize();
         projectile.LoadContent(_projectileModel, _effect);
         _projectiles.Add(projectile);
+        _shootSound.Play(GameSettings.SoundEffectsVolumen, 0.1f, 0f);
     }
 
     public void Draw()
@@ -284,9 +298,6 @@ public class GameScene : Scene
         _hudView.Draw();
     }
     
-    // TODO: Este método junto a todo lo que tiene que ver con el dibujo del reticulo tiene que ser abstraido a una clase debido 
-    // TODO: A que no es responsabilidad del TGCGame y ahora tampoco de GameScene implementar la lógica de dibuado de un reticulo
-
     public void SetBattlefield(Battlefield battlefield)
     {
         this._battlefield = battlefield;
@@ -304,6 +315,7 @@ public class GameScene : Scene
 
     public Scene Transition()
     {
+        MediaPlayer.Stop();
         // Versión rápida para validar la idea end-to-end: solo mensaje por
         // consola, sin pantalla de fin todavía (eso queda para una fase posterior).
         if (_tank.IsDead)

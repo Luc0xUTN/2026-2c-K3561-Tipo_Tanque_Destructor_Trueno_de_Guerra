@@ -1,3 +1,6 @@
+using System;
+using System.Runtime.CompilerServices;
+
 namespace TGC.MonoGame.TP;
 
 // Responsabilidad: Singleton que contiene todas las carácticas de configuración del juego para que cualquier clase lo pueda obtener. 
@@ -14,4 +17,16 @@ public static class GameSettings
     // los tiró) -- queda como variable de código por ahora, listo para exponerse
     // desde un menú de opciones más adelante.
     public static bool FriendlyFireEnabled { get; set; } = true;
+    
+    public static float MusicVolumen { get; set; } = 1f;
+    public static float SoundEffectsVolumen { get; set; } = 0.2f;
+
+    public static EventHandler GetMusicAdder(float value)
+    {
+        return (obj, args) =>
+        {
+            MusicVolumen += value;
+        };
+    }
+    
 }

@@ -21,11 +21,12 @@ public class MenuView : View
     private Action _salirDelJuego;
 
     private View _howToPlayView;
+    // private View _settingsView; 
     
     
     private Label _gameTitle;
     private Button _playBtn;
-    private Button _settingsBtn; 
+    // private Button _settingsBtn; 
     private Button _howToPlayBtn;
     private Button _exitBtn; 
     
@@ -44,9 +45,13 @@ public class MenuView : View
         int centerY = _device.Viewport.Height / 2;
         
         _gameTitle = new Label(_font,"Tipo Tanque Destructor Trueno de Guerra", new Vector2(centerX, 200), true);
-
+        
+        
         _howToPlayView = new HowToPlayView(this, _device, _menuScene, _font, _spriteBatch);
         _howToPlayView.Initialize();
+        
+        // _settingsView = new ConfigurationView(this, _device, _menuScene, _font, _spriteBatch);
+        // _settingsView.Initialize();
         
         Vector2 btnsBasePosition = new Vector2(centerX, centerY - 50); 
         const int padding = 100;
@@ -60,10 +65,10 @@ public class MenuView : View
         _howToPlayBtn = new Button(_font, "Como jugar?", positions[1], true);
         _howToPlayBtn.Click += _menuScene.GetSetView(_howToPlayView);
         
-        _settingsBtn = new Button(_font, "Configuracion", positions[2], true);
-        _settingsBtn.Click += SettingsBtn_handler;
+        // _settingsBtn = new Button(_font, "Configuracion", positions[2], true);
+        // _settingsBtn.Click += _menuScene.GetSetView(_settingsView);
         
-        _exitBtn = new Button(_font, "Salir", positions[3], true);
+        _exitBtn = new Button(_font, "Salir", positions[2], true);
         _exitBtn.Click += SalirBtn_handler; 
     }
     
@@ -72,7 +77,7 @@ public class MenuView : View
     {
         _playBtn.Update();
         _howToPlayBtn.Update();
-        _settingsBtn.Update();
+        // _settingsBtn.Update();
         _exitBtn.Update();
     }
 
@@ -83,7 +88,7 @@ public class MenuView : View
         _gameTitle.Draw(_spriteBatch);
         _playBtn.Draw(_spriteBatch);
         _howToPlayBtn.Draw(_spriteBatch);
-        _settingsBtn.Draw(_spriteBatch);
+        // _settingsBtn.Draw(_spriteBatch);
         _exitBtn.Draw(_spriteBatch);
         
         _spriteBatch.End();
@@ -94,11 +99,6 @@ public class MenuView : View
         _menuScene.FlTransition = true;
     }
     
-    private void SettingsBtn_handler(object sender, EventArgs args)
-    {
-        
-    }
-
     private void SalirBtn_handler(object sender, EventArgs args)
     {
         _salirDelJuego.Invoke();   
