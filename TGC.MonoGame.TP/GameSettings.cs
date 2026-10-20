@@ -4,7 +4,9 @@ namespace TGC.MonoGame.TP;
 public static class GameSettings
 {
     public const float MapSize  = 300f;
-    public static float Sensitivity { get; set; } = 0.005f;
+    // Radianes de puntería por píquel de movimiento del mouse. Bajar este valor hace la mira
+    // menos sensible (antes 0.005).
+    public static float Sensitivity { get; set; } = 0.0025f;
     public static bool DebugMode { get; set;  }= false;
 
     // Si está en false, un proyectil ignora a los tanques de su mismo equipo

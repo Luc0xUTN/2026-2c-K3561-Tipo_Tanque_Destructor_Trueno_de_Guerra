@@ -18,8 +18,9 @@ namespace TGC.MonoGame.TP.Cameras;
 // apuntar hacia arriba no la hunde en el terreno.
 public class OrbitalCamera : BaseCamera
 {
-    // Altura de la cámara sobre la base del tanque. No depende del pitch.
-    private const float CameraHeight = 3f;
+    // Altura de la cámara sobre la base del tanque. No depende del pitch. Subiéndola se ve
+    // mejor por encima del casco cuando se apunta hacia adelante.
+    private const float CameraHeight = 4.5f;
 
     // Distancia mínima entre la cámara y la superficie del terreno.
     private const float MinGroundClearance = 2f;
@@ -29,6 +30,11 @@ public class OrbitalCamera : BaseCamera
 
     // Qué tan rápido la cámara alcanza a la puntería (1/s). Más alto = menos retraso.
     private const float FollowSharpness = 6f;
+
+    // Amortiguación de los tirones del mouse (picos de movimiento o de polling, 1/s).
+    // Suaviza el delta del mouse con un filtro exponencial: más alto = más fiel al mouse,
+    // más bajo = más parejo pero con un leve retardo.
+    private const float MouseSmoothing = 25f;
 
     // La cámara no acompaña toda la elevación: si no, al apuntar muy arriba el tanque se va de
     // cuadro. Hasta este ángulo el retículo queda centrado; más allá, queda pegado al borde.
@@ -50,6 +56,10 @@ public class OrbitalCamera : BaseCamera
     private float _cameraYaw;
     private float _cameraPitch;
 
+    // Delta del mouse ya suavizado (ver MouseSmoothing).
+    private float _smoothedDeltaX;
+    private float _smoothedDeltaY;
+
     public OrbitalCamera(Entity target, float radius, float centerX, float centerY, float sensitivity,
         Func<float, float, float> getTerrainHeight)
     {
@@ -65,6 +75,8 @@ public class OrbitalCamera : BaseCamera
     {
         _cameraYaw = Yaw;
         _cameraPitch = Pitch;
+        _smoothedDeltaX = 0f;
+        _smoothedDeltaY = 0f;
         this.UpdateView();
     }
 
@@ -98,9 +110,17 @@ public class OrbitalCamera : BaseCamera
         MouseState mouseState = Mouse.GetState();
         
         // El mouse está capturado y el juego lo recentera en cada frame, así que este delta es
-        // el movimiento realizado durante el frame.
-        float deltaX = mouseState.X - _centerX;
-        float deltaY = mouseState.Y - _centerY;
+        // el movimiento realizado durante el frame. Se filtra antes de aplicarlo: los tirones
+        // (picos de un solo frame) quedan repartidos en el tiempo y la mira se mueve parejo.
+        float rawDeltaX = mouseState.X - _centerX;
+        float rawDeltaY = mouseState.Y - _centerY;
+
+        float smoothing = 1f - MathF.Exp(-MouseSmoothing * elapsedTime);
+        _smoothedDeltaX += (rawDeltaX - _smoothedDeltaX) * smoothing;
+        _smoothedDeltaY += (rawDeltaY - _smoothedDeltaY) * smoothing;
+
+        float deltaX = _smoothedDeltaX;
+        float deltaY = _smoothedDeltaY;
 
         // Mismos sentidos que el giro del casco (A/D) y la elevación: mouse a la derecha gira a la
         // derecha, mouse hacia arriba apunta hacia arriba.
