@@ -17,6 +17,11 @@ public class PhysicsSystem
     private readonly List<ICollidable> _dynamicCollidables = [];
     private readonly HashSet<ICollidable> _colliding = [];
 
+    // Lectura para Projectile: necesita testear su segmento de movimiento contra
+    // el escenario (árboles, rocas), no solo contra los tanques que ya conoce
+    // GameScene directo.
+    public IReadOnlyList<ICollidable> StaticCollidables => _staticCollidables;
+
     public virtual void Add(ICollidable collidable)
     {
         var list = collidable.IsStatic ? _staticCollidables : _dynamicCollidables;

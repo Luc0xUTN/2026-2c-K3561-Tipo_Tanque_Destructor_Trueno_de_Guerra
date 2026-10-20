@@ -29,21 +29,29 @@ public class GameScene : Scene
     
     // TODO: Esto debe ser pasado a la clase tanque debido a que el tanque debe saber como se mueve su torreta y cañon
     private TurretCanonCameraAimHandler _turretCanonMovementHandler; 
-    private Tank _tank; 
+    private Tank _tank;
     private List<EnemyTank> _enemyTanks;
-    
+    private List<Projectile> _projectiles;
+
     private Matrix _projection;
 
     private readonly Keys _keyFreeLook = Keys.C;
-    
+
     // Recursos de la mira (retículo) que se dibuja sobre la escena.
     private SpriteBatch _spriteBatch;
     private Texture2D _reticlePixel;
 
-    private Game _game; 
+    private Game _game;
     private GraphicsDevice _device;
-    private ContentManager _contentManager;    
-    
+    private ContentManager _contentManager;
+
+    // Guardados desde LoadContent para poder instanciar proyectiles sobre la
+    // marcha cuando un tanque dispara (Update corre muchas veces, LoadContent
+    // una sola). Modelo placeholder (Rock0) -- no hay asset de proyectil propio
+    // todavía, "no somos diseñadores" así que se reusa uno existente a escala chica.
+    private Effect _effect;
+    private Model _projectileModel;
+
     
     public GameScene(Game game)
     {
@@ -100,7 +108,9 @@ public class GameScene : Scene
             enemyTank.Initialize();
             _enemyTanks.Add(enemyTank);
         }
-        
+
+        _projectiles = new List<Projectile>();
+
         _camera = GameSettings.DebugMode
             ? new IsometricCamera(new Vector3(200, 220, 200), Vector3.Zero, Vector3.Up)
             : new OrbitalCamera(_tank, 20, _centerX, _centerY, GameSettings.Sensitivity, _battlefield.GetHeightAt);
@@ -126,21 +136,24 @@ public class GameScene : Scene
             _battlefield.LoadContent(_contentManager, ContentPaths.ContentFolder3D);
         }
 
-        Effect effect = _contentManager.Load<Effect>(ContentPaths.ContentFolderEffects + "BasicShader");
+        _effect = _contentManager.Load<Effect>(ContentPaths.ContentFolderEffects + "BasicShader");
 
         // Cada tanque carga el modelo con su propio ContentManager. Si todos
         // comparten uno (como antes), ContentManager cachea el Model por path y
         // los 4 tanques terminan compartiendo los mismos ModelBone de torreta y
-        // cañón -- el último que actualiza en el frame pisa a los demás (ver
-        // progress/09 en el repo de contexto).
+        // cañón -- el último que actualiza en el frame pisa a los demás.
         Model playerModel = new ContentManager(_game.Services, _contentManager.RootDirectory).Load<Model>(ContentPaths.ContentFolder3D + "tanks/Panzer/Panzer");
-        _tank.LoadContent(playerModel, effect, "Turret", "Cannon");
+        _tank.LoadContent(playerModel, _effect, "Turret", "Cannon");
 
         foreach (var enemyTank in _enemyTanks)
         {
             Model enemyModel = new ContentManager(_game.Services, _contentManager.RootDirectory).Load<Model>(ContentPaths.ContentFolder3D + "tanks/Panzer/Panzer");
-            enemyTank.LoadContent(enemyModel, effect, "Turret", "Cannon");
+            enemyTank.LoadContent(enemyModel, _effect, "Turret", "Cannon");
         }
+
+        // Placeholder visual del proyectil -- no hay un modelo propio de "obús"
+        // todavía, se reusa un mesh existente (Rock0) a escala chica.
+        _projectileModel = _contentManager.Load<Model>(ContentPaths.ContentFolder3D + "forest/Rocks/Rock0");
 
         // Un único pixel blanco reescalado alcanza para armar la mira del HUD.
         _spriteBatch = new SpriteBatch(_device);
@@ -172,15 +185,54 @@ public class GameScene : Scene
         );
         
         _tank.Update(elapsedTime);
-        
+
         foreach (var enemyTank in _enemyTanks)
         {
             enemyTank.Update(elapsedTime);
         }
 
+        TrySpawnProjectile(_tank);
+        foreach (var enemyTank in _enemyTanks)
+        {
+            TrySpawnProjectile(enemyTank);
+        }
+
+        var allTanks = new List<Tank> { _tank };
+        allTanks.AddRange(_enemyTanks);
+        foreach (var projectile in _projectiles)
+        {
+            projectile.Update(elapsedTime, allTanks, _physicsSystem.StaticCollidables, _battlefield.GetHeightAt);
+        }
+        _projectiles.RemoveAll(p => !p.IsAlive);
+
         Mouse.SetPosition(_centerX,_centerY);
-        
+
         _physicsSystem.Update();
+    }
+
+    // La posición/dirección de spawn salen del transform absoluto del bone del
+    // cañón (casco -> torreta -> cañón, multiplicado y recién ahí llevado al
+    // mundo) -- no alcanza con un offset fijo desde la posición del tanque,
+    // porque la torreta apunta independiente de hacia dónde mira el casco.
+    private void TrySpawnProjectile(Tank tank)
+    {
+        if (!tank.WantsToFire) return;
+
+        const float muzzleSpeed = 60f; // provisorio, a ajustar por feel.
+
+        var canonTransform = tank.GetCanonWorldTransform();
+        var spawnPosition = canonTransform.Translation;
+        // Negado: mismo problema de convención que Move(-1) en PlayerTank -- el
+        // modelo tiene el eje "Forward" invertido respecto de hacia dónde apunta
+        // visualmente el cañón (verificado con el log de spawn: con el signo
+        // original, los disparos salían hacia atrás del tanque).
+        var direction = -canonTransform.Forward;
+        direction.Normalize();
+
+        var projectile = new Projectile(spawnPosition, direction * muzzleSpeed, tank);
+        projectile.Initialize();
+        projectile.LoadContent(_projectileModel, _effect);
+        _projectiles.Add(projectile);
     }
 
     public void Draw()
@@ -193,6 +245,11 @@ public class GameScene : Scene
         foreach (var enemyTank in _enemyTanks)
         {
             enemyTank.Draw(_device, _camera.GetView(), _projection);
+        }
+
+        foreach (var projectile in _projectiles)
+        {
+            projectile.Draw(_device, view, _projection);
         }
 
         if (_physicsSystem is DebugPhysicsSystem)

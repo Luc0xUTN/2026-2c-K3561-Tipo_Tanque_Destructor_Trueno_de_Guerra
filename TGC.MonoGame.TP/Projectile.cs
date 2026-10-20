@@ -1,7 +1,147 @@
+using System;
+using System.Collections.Generic;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using TGC.MonoGame.TP.Collisions;
+
 namespace TGC.MonoGame.TP;
 
-// Responsabilidad: Representa a un proyectil
-public class Projectile
+// Responsabilidad: proyectil disparado por un tanque. Trayectoria parabólica
+// (gravedad simple sobre la componente Y de la velocidad). La colisión se
+// chequea contra el SEGMENTO que recorrió en el frame (posición anterior ->
+// actual), no contra un punto -- un proyectil rápido puede "saltear" un tanque
+// entero entre dos posiciones discretas si solo se pregunta "¿estoy
+// superpuesto ahora?" (el mismo problema, en otra escala, que hace que los
+// tanques se deslicen entre colisionables -- issue #11).
+public class Projectile : Entity
 {
-    
+    private const float Gravity = 20f; // unidades/s^2, provisorio -- cuánto arco se ve bien es cuestión de feel.
+    private const float Radius = 0.3f; // chico: solo para el margen del broad-phase del segmento.
+    private const float MaxLifetimeSeconds = 6f; // red de seguridad si nunca choca con nada (se fue del mapa, quedó en una parábola infinita, etc).
+
+    private readonly Tank _owner;
+    private Vector3 _velocity;
+    private float _lifetime;
+
+    public bool IsAlive { get; private set; } = true;
+
+    public Projectile(Vector3 position, Vector3 velocity, Tank owner)
+        : base(position, new Vector3(0.3f, 0.3f, 0.3f), Vector3.Zero, Color.Gold)
+    {
+        _velocity = velocity;
+        _owner = owner;
+    }
+
+    // tanks: todos los tanques vivos (jugador + enemigos) -- se filtra acá adentro
+    // quién puede recibir el impacto. staticCollidables: el escenario (árboles,
+    // rocas) vía PhysicsSystem.StaticCollidables. getHeightAt: altura real del
+    // terreno (Battlefield.GetHeightAt) -- regla general del proyectil: cualquier
+    // colisión lo destruye, el piso no es la excepción.
+    public void Update(float elapsedTime, IReadOnlyList<Tank> tanks, IReadOnlyList<ICollidable> staticCollidables, Func<float, float, float> getHeightAt)
+    {
+        if (!IsAlive) return;
+
+        _lifetime += elapsedTime;
+        if (_lifetime >= MaxLifetimeSeconds)
+        {
+            IsAlive = false;
+            return;
+        }
+
+        _velocity.Y -= Gravity * elapsedTime;
+
+        var previousPosition = _position;
+        var nextPosition = _position + _velocity * elapsedTime;
+
+        var groundHeight = getHeightAt(nextPosition.X, nextPosition.Z);
+        if (nextPosition.Y <= groundHeight)
+        {
+            var groundPoint = new Vector3(nextPosition.X, groundHeight, nextPosition.Z);
+            IsAlive = false;
+            Console.WriteLine($"Projectile impact on ground at {groundPoint}");
+            return;
+        }
+
+        foreach (var tank in tanks)
+        {
+            if (tank == _owner) continue; // el spawn ya lo evita, esto es una red de seguridad barata.
+            if (!GameSettings.FriendlyFireEnabled && SameTeam(_owner, tank)) continue;
+
+            if (TryHit(tank.Collider, previousPosition, nextPosition, out var hitPoint))
+            {
+                OnImpact(tank, hitPoint);
+                return;
+            }
+        }
+
+        foreach (var collidable in staticCollidables)
+        {
+            if (TryHit(collidable.Collider, previousPosition, nextPosition, out var hitPoint))
+            {
+                OnImpact(collidable, hitPoint);
+                return;
+            }
+        }
+
+        _position = nextPosition;
+        SetWorldMatrix();
+    }
+
+    private bool TryHit(Collider collider, Vector3 from, Vector3 to, out Vector3 hitPoint)
+    {
+        hitPoint = Vector3.Zero;
+
+        // Broad-phase: distancia del CENTRO del collider al SEGMENTO completo
+        // (no a la posición actual) -- así no importa qué tan rápido viaje el
+        // proyectil entre un frame y el siguiente, el chequeo mira todo el camino.
+        var closest = ClosestPointOnSegment(collider.Position, from, to);
+        var maxDistance = collider.BoundingRadius + Radius;
+        if (Vector3.DistanceSquared(collider.Position, closest) > maxDistance * maxDistance)
+            return false;
+
+        if (collider is ConvexCollider convexCollider &&
+            convexCollider.TryIntersectSegment(from, to, out var t, out _))
+        {
+            hitPoint = from + (to - from) * t;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static Vector3 ClosestPointOnSegment(Vector3 point, Vector3 a, Vector3 b)
+    {
+        var ab = b - a;
+        var lengthSquared = ab.LengthSquared();
+        if (lengthSquared < 1e-6f) return a;
+
+        var t = MathHelper.Clamp(Vector3.Dot(point - a, ab) / lengthSquared, 0f, 1f);
+        return a + ab * t;
+    }
+
+    // Único concepto de "equipo" que existe hoy: jugador vs. cualquier enemigo.
+    // Si más adelante hay más de un jugador o facciones, esto tiene que cambiar.
+    private static bool SameTeam(Tank a, Tank b)
+    {
+        return (a is PlayerTank) == (b is PlayerTank);
+    }
+
+    private void OnImpact(ICollidable target, Vector3 hitPoint)
+    {
+        IsAlive = false;
+
+        // Placeholder -- diferenciar la respuesta según el tipo de objetivo
+        // (remover el prop, dañar el tanque) queda para una próxima pasada,
+        // tratando props y tanques por separado.
+        Console.WriteLine($"Projectile impact on {target.GetType().Name} at {hitPoint}");
+    }
+
+    protected override void DrawMeshes()
+    {
+        foreach (var mesh in _model.Meshes)
+        {
+            _effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * _world);
+            mesh.Draw();
+        }
+    }
 }

@@ -13,8 +13,12 @@ namespace TGC.MonoGame.TP;
 // Responsabilidad: Representar a un tanque en sí 
 public class Tank : Entity
 {
-    private float _acceleration = 50f;
-    private float _deceleration = 3f;
+    // La velocidad terminal del modelo de orugas amortiguadas es ~accel/_dumping
+    // (ver el comentario de Update más abajo) -- con _dumping=2 en el constructor,
+    // 100 da ~50u/s, el doble que antes (era 50f ~= 25u/s). Afecta a todos los
+    // tanques por igual (Tank es la base de PlayerTank y EnemyTank).
+    private float _acceleration = 100f;
+    private float _deceleration = 3f; // no es frenado lineal -- controla qué tan brusco gira (diferencial entre orugas).
 
 
     private int _speedingDirection = 0;
@@ -34,8 +38,14 @@ public class Tank : Entity
     private Battlefield _battlefield;
     
     protected Turret _turret;
-    protected Canon _canon; 
-    
+    protected Canon _canon;
+
+    // Seteado por PlayerTank/EnemyTank cada Update -- GameScene lo lee después
+    // de actualizar el tanque y, si está en true, crea el Projectile. Ni el
+    // jugador ni la IA conocen a GameScene, solo "avisan" que quieren disparar
+    // (mismo principio que TankIntention.ShouldFire).
+    public bool WantsToFire { get; protected set; }
+
     public Tank(Vector3 position,Vector3 scale, Vector3 rotation, Color color, Battlefield battlefield) : base(position, scale, rotation, color )
     {
         IsSolid = true;
@@ -143,6 +153,17 @@ public class Tank : Entity
         
         _turret.Update(elapsedTime);
         _canon.Update(elapsedTime);
+    }
+
+    // Transform absoluto del bone del cañón, en espacio de mundo -- de ahí sale
+    // la posición y dirección de spawn de un proyectil. Se recalcula fresco acá
+    // (no se reusa _absoluteWorldsMatrix de DrawMeshes) porque Update corre antes
+    // que Draw en el frame: si WantsToFire se decide en este Update, el último
+    // valor dibujado todavía sería el del frame anterior.
+    public Matrix GetCanonWorldTransform()
+    {
+        _model.CopyAbsoluteBoneTransformsTo(_absoluteWorldsMatrix);
+        return _absoluteWorldsMatrix[_canon.BoneIndex] * _world;
     }
 
     private Quaternion _getTerrainRotationQuaternion()

@@ -25,7 +25,12 @@ public abstract class RotationalObject
     
     private ModelBone _bone;
     private readonly Matrix _originalWorldTransform;
-    
+
+    // Índice del bone dentro de Model.Bones -- lo necesita Tank para buscar su
+    // transform absoluto (CopyAbsoluteBoneTransformsTo) al calcular dónde nace
+    // un proyectil disparado desde este objeto (torreta/cañón).
+    public int BoneIndex => _bone.Index;
+
     protected RotationalObject(ModelBone bone)
     {
         _bone = bone;

@@ -103,8 +103,10 @@ public class AI
 
         if (MathF.Abs(delta) > AngleTolerance)
         {
-            // Tank.Update hace "_rotation.X -= direction * speed * dt": para
-            // INCREMENTAR el yaw actual (delta > 0) hace falta direction negativa.
+            // Rotate(1) termina restando al yaw (ver Tank.Update: un rotationDirection
+            // positivo frena la oruga izquierda y acelera la derecha, lo que achica
+            // el yaw) -- para INCREMENTAR el yaw actual (delta > 0) hace falta
+            // rotateDirection negativo.
             var rotateDirection = delta > 0 ? -1 : 1;
             return (rotateDirection, 0);
         }

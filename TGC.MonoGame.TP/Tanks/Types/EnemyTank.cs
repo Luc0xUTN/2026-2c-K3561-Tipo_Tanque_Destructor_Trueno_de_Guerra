@@ -1,4 +1,3 @@
-using System;
 using Microsoft.Xna.Framework;
 
 namespace TGC.MonoGame.TP;
@@ -22,12 +21,7 @@ public class EnemyTank : Tank
 
         Rotate(intention.RotateDirection);
         Move(intention.MoveDirection);
-
-        if (intention.ShouldFire)
-        {
-            // Placeholder -- disparo real (proyectil) pendiente.
-            Console.WriteLine("Enemy tank fires!");
-        }
+        WantsToFire = intention.ShouldFire;
 
         base.Update(elapsedTime);
     }

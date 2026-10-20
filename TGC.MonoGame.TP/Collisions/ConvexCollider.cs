@@ -84,4 +84,72 @@ public class ConvexCollider : Collider
 
         return result;
     }
+
+    // Recorta el segmento a-b contra cada plano de cara del poliedro (Cyrus-Beck
+    // generalizado a 3D) -- lo usa Projectile para CCD: en vez de preguntar "¿estoy
+    // superpuesto ahora?" en cada frame (lo que un proyectil rápido puede saltear
+    // sin tocar nunca el collider), pregunta "¿el camino que recorrí este frame
+    // cruzó el poliedro en algún punto?". tHit es el punto de entrada, en [0,1]
+    // sobre el segmento; hitNormal es la normal de la cara por la que entró.
+    public bool TryIntersectSegment(Vector3 a, Vector3 b, out float tHit, out Vector3 hitNormal)
+    {
+        var worldVertices = GetWorldVertices();
+        var worldNormals = GetWorldNormals();
+        var direction = b - a;
+
+        var tMin = 0f;
+        var tMax = 1f;
+        var enterNormal = Vector3.Zero;
+
+        for (var i = 0; i < Faces.Count; i++)
+        {
+            var normal = worldNormals[i];
+            var pointOnFace = worldVertices[Faces[i].VertexIndices[0]];
+
+            // w: qué tan "afuera" (en la dirección de la normal) arranca el segmento
+            // respecto de este plano. d: qué tan rápido se mueve hacia adentro/afuera.
+            var w = Vector3.Dot(a - pointOnFace, normal);
+            var d = Vector3.Dot(direction, normal);
+
+            if (MathF.Abs(d) < 1e-6f)
+            {
+                // Segmento paralelo a esta cara: si ya arrancó afuera, nunca va a
+                // entrar por acá -- descarta todo el segmento.
+                if (w > 0f)
+                {
+                    tHit = 0f;
+                    hitNormal = Vector3.Zero;
+                    return false;
+                }
+                continue;
+            }
+
+            var t = -w / d;
+            if (d > 0f)
+            {
+                // Saliendo por este plano: pone un techo a t.
+                if (t < tMax) tMax = t;
+            }
+            else
+            {
+                // Entrando por este plano: pone un piso a t.
+                if (t > tMin)
+                {
+                    tMin = t;
+                    enterNormal = normal;
+                }
+            }
+
+            if (tMin > tMax)
+            {
+                tHit = 0f;
+                hitNormal = Vector3.Zero;
+                return false;
+            }
+        }
+
+        tHit = tMin;
+        hitNormal = enterNormal;
+        return true;
+    }
 }
