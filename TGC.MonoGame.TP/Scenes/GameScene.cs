@@ -16,7 +16,6 @@ public class GameScene : Scene
 
     
     private bool _drawColliders = false;
-    private static readonly bool DebugIsometricCamera = false;
     
     private PhysicsSystem _physicsSystem;
 
@@ -57,7 +56,6 @@ public class GameScene : Scene
     // todavía, "no somos diseñadores" así que se reusa uno existente a escala chica.
     private Effect _effect;
     private Model _projectileModel;
-
     
     public GameScene(Game game)
     {
@@ -131,7 +129,7 @@ public class GameScene : Scene
 
         _physicsSystem.Add(_tank);
         _enemyTanks.ForEach(t => _physicsSystem.Add(t));
-
+        
         _game.IsMouseVisible = false; 
     }
 
@@ -168,7 +166,7 @@ public class GameScene : Scene
 
         // Reusa la misma fuente del menú -- no hay una fuente propia del HUD todavía.
         _hudFont = _contentManager.Load<SpriteFont>(ContentPaths.ContentFolderSpriteFonts + "Menu");
-        _hudView = new GameHudView(_device, _hudFont, _spriteBatch, _reticlePixel, _tank, _enemyTanks);
+        _hudView = new GameHudView(_device, _hudFont, _spriteBatch, _reticlePixel, _tank, _enemyTanks, _camera, _projection);
         _hudView.Initialize();
     }
 
@@ -285,47 +283,12 @@ public class GameScene : Scene
 
         DebugManager.Draw(_device, view, _projection);
 
-        _spriteBatch.Begin();
-         DrawReticle(view, _device);
         _hudView.Draw();
-        _spriteBatch.End();
     }
     
     // TODO: Este método junto a todo lo que tiene que ver con el dibujo del reticulo tiene que ser abstraido a una clase debido 
     // TODO: A que no es responsabilidad del TGCGame y ahora tampoco de GameScene implementar la lógica de dibuado de un reticulo
-    // Mira : la cruz se proyecta desde la dirección que marca el mouse, así que
-    // sigue al mouse en pantalla y la cámara la recentra a medida que se acomoda detrás del tanque.
-    // La torreta y el cañón persiguen esa misma dirección, más lento todavía.
-    private void DrawReticle(Matrix view, GraphicsDevice device)
-    {
-        const int gap = 5;
-        const int arm = 14;
-        const int thickness = 2;
-        int half = thickness / 2;
-        Color color = new Color(0.25f, 1f, 0.25f, 0.9f);
 
-        // Punto lejano en la dirección de puntería, saliendo de la torreta.
-        Vector3 aimPoint = _tank.GetPosition() + Vector3.Up * 2.5f + _camera.AimDirection * 200f;
-
-        Vector3 screen = device.Viewport.Project(aimPoint, _projection, view, Matrix.Identity);
-        if (screen.Z < 0f || screen.Z > 1f)
-            return; // quedó detrás de la cámara
-
-        // Se mantiene siempre dentro de la pantalla, aun apuntando al límite del rango del cañón.
-        int margin = gap + arm;
-        int cx = (int)MathHelper.Clamp(screen.X, margin, device.Viewport.Width - margin);
-        int cy = (int)MathHelper.Clamp(screen.Y, margin, device.Viewport.Height - margin);
-
-        // Brazos horizontales.
-        _spriteBatch.Draw(_reticlePixel, new Rectangle(cx - gap - arm, cy - half, arm, thickness), color);
-        _spriteBatch.Draw(_reticlePixel, new Rectangle(cx + gap, cy - half, arm, thickness), color);
-        // Brazos verticales.
-        _spriteBatch.Draw(_reticlePixel, new Rectangle(cx - half, cy - gap - arm, thickness, arm), color);
-        _spriteBatch.Draw(_reticlePixel, new Rectangle(cx - half, cy + gap, thickness, arm), color);
-        // Punto central.
-        _spriteBatch.Draw(_reticlePixel, new Rectangle(cx - 1, cy - 1, 2, 2), color);
-    }
-    
     public void SetBattlefield(Battlefield battlefield)
     {
         this._battlefield = battlefield;
