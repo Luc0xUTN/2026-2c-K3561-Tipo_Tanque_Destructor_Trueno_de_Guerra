@@ -37,10 +37,13 @@ public class Projectile : Entity
     public List<ICollidable> DestroyedProps { get; } = new();
 
     public Projectile(Vector3 position, Vector3 velocity, Tank owner)
-        : base(position, new Vector3(0.3f, 0.3f, 0.3f), Vector3.Zero, Color.Gold)
+        : base(position, Vector3.One, Vector3.Zero, Color.Gold)
     {
         _velocity = velocity;
         _owner = owner;
+
+        UpdateRotation();
+        SetWorldMatrix();
     }
 
     // tanks: todos los tanques vivos (jugador + enemigos) -- se filtra acá adentro
@@ -162,5 +165,17 @@ public class Projectile : Entity
             _effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * _world);
             mesh.Draw();
         }
+    }
+
+    private void UpdateRotation()
+    {
+        if (_velocity.LengthSquared() < 1e-6f)
+            return;
+
+        Vector3 direction = Vector3.Normalize(_velocity);
+
+        _rotation = Quaternion.CreateFromRotationMatrix(
+            Matrix.CreateWorld(Vector3.Zero, direction, Vector3.Up)
+        );
     }
 }

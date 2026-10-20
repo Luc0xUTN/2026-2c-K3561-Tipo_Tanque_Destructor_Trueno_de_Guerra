@@ -155,9 +155,7 @@ public class GameScene : Scene
             enemyTank.LoadContent(enemyModel, _effect, "Turret", "Cannon");
         }
 
-        // Placeholder visual del proyectil -- no hay un modelo propio de "obús"
-        // todavía, se reusa un mesh existente (Rock0) a escala chica.
-        _projectileModel = _contentManager.Load<Model>(ContentPaths.ContentFolder3D + "forest/Rocks/Rock0");
+        _projectileModel = _contentManager.Load<Model>(ContentPaths.ContentFolder3D + "projectiles/Bullet");
 
         // Un único pixel blanco reescalado alcanza para armar la mira del HUD.
         _spriteBatch = new SpriteBatch(_device);
