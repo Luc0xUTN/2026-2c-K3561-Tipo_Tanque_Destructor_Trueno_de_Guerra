@@ -46,39 +46,49 @@ public class Tank : Entity
     // (mismo principio que TankIntention.ShouldFire).
     public bool WantsToFire { get; protected set; }
 
+    // --- Vida ---
+    private const int MaxHealth = 100;
+    private const int ProjectileDamage = 10;
+    private const int CollisionDamage = 2;
+    // Sin este cooldown, un tanque trabado contra un obstáculo (issue #11,
+    // todavía sin resolver) perdería 2 de vida CADA FRAME mientras siga
+    // superpuesto -- se moriría en menos de un segundo. Esto no limita el daño
+    // de un impacto de proyectil (eso siempre aplica, ver TakeProjectileDamage).
+    private const float CollisionDamageCooldownSeconds = 0.5f;
+    private float _collisionDamageCooldownTimer;
+
+    public int Health { get; private set; } = MaxHealth;
+    public bool IsDead => Health <= 0;
+
     public Tank(Vector3 position,Vector3 scale, Vector3 rotation, Color color, Battlefield battlefield) : base(position, scale, rotation, color )
     {
         IsSolid = true;
         IsStatic = false;
 
-        var vertices = new List<Vector3>
-        {
-            new(-2, 0, -2),
-            new( 2, 0, -2),
-            new( 2, 0,  2),
-            new(-2, 0,  2),
-
-            new(-2, 3, -2),
-            new( 2, 3, -2),
-            new( 2, 3,  2),
-            new(-2, 3,  2)
-        };
-
-        var faces = new List<Face>
-        {
-            new(vertices, new List<int> { 0, 1, 2, 3 }),
-            new(vertices, new List<int> { 0, 4, 5, 1 }),
-            new(vertices, new List<int> { 4, 7, 6, 5 }),
-            new(vertices, new List<int> { 1, 5, 6, 2 }),
-            new(vertices, new List<int> { 2, 6, 7, 3 }),
-            new(vertices, new List<int> { 3, 7, 4, 0 })
-        };
+        var (vertices, faces) = BoxColliderFactory.CreateBox(halfWidth: 2f, height: 3f);
 
         _yaw = 0.0f;
-        _dumping = 2.0f; 
-        
+        _dumping = 2.0f;
+
         Collider = new ConvexCollider(this, vertices, faces);
         _battlefield = battlefield;
+    }
+
+    // Impacto directo de un proyectil -- siempre aplica, no tiene cooldown (un
+    // disparo ya está limitado por el cooldown de disparo del que lo tiró).
+    public void TakeProjectileDamage()
+    {
+        Health = Math.Max(0, Health - ProjectileDamage);
+    }
+
+    // Choque físico contra otro tanque/prop -- gateado por cooldown (ver comentario
+    // de CollisionDamageCooldownSeconds). La llama PhysicsSystem.CheckPair.
+    public void TakeCollisionDamage()
+    {
+        if (_collisionDamageCooldownTimer > 0f) return;
+
+        Health = Math.Max(0, Health - CollisionDamage);
+        _collisionDamageCooldownTimer = CollisionDamageCooldownSeconds;
     }
 
     public void LoadContent(Model model,  Effect effect, string turretBoneName, string canonBoneName)
@@ -121,6 +131,8 @@ public class Tank : Entity
 
     public virtual void Update(float elapsedTime)
     {
+        _collisionDamageCooldownTimer -= elapsedTime;
+
         _leftCaterpillarSpeed += _speedingDirection * _acceleration * elapsedTime;
         _rightCaterpillarSpeed += _speedingDirection * _acceleration * elapsedTime;
         

@@ -19,11 +19,22 @@ public class Projectile : Entity
     private const float Radius = 0.3f; // chico: solo para el margen del broad-phase del segmento.
     private const float MaxLifetimeSeconds = 6f; // red de seguridad si nunca choca con nada (se fue del mapa, quedó en una parábola infinita, etc).
 
+    // Destructibles: al impactar un prop, no solo desaparece el que registró el
+    // hit -- todo lo que esté a este radio del punto de impacto también (decisión
+    // de Dante: "un radio chico... no uno a uno").
+    private const float DestructionRadius = 4f;
+
     private readonly Tank _owner;
     private Vector3 _velocity;
     private float _lifetime;
 
     public bool IsAlive { get; private set; } = true;
+
+    // Props que este impacto destruyó (vacía si no hubo impacto contra el
+    // escenario este frame) -- GameScene los lee después de Update() y es quien
+    // efectivamente los saca de Forest/PhysicsSystem (Projectile no tiene
+    // referencia a ninguno de los dos, solo "reporta" qué pasó).
+    public List<ICollidable> DestroyedProps { get; } = new();
 
     public Projectile(Vector3 position, Vector3 velocity, Tank owner)
         : base(position, new Vector3(0.3f, 0.3f, 0.3f), Vector3.Zero, Color.Gold)
@@ -69,7 +80,9 @@ public class Projectile : Entity
 
             if (TryHit(tank.Collider, previousPosition, nextPosition, out var hitPoint))
             {
-                OnImpact(tank, hitPoint);
+                IsAlive = false;
+                tank.TakeProjectileDamage();
+                Console.WriteLine($"Projectile impact on {tank.GetType().Name} at {hitPoint} -- vida restante: {tank.Health}");
                 return;
             }
         }
@@ -78,7 +91,9 @@ public class Projectile : Entity
         {
             if (TryHit(collidable.Collider, previousPosition, nextPosition, out var hitPoint))
             {
-                OnImpact(collidable, hitPoint);
+                IsAlive = false;
+                DestroyNearbyProps(hitPoint, staticCollidables);
+                Console.WriteLine($"Projectile impact on prop at {hitPoint} -- {DestroyedProps.Count} prop(s) destruidos");
                 return;
             }
         }
@@ -126,14 +141,18 @@ public class Projectile : Entity
         return (a is PlayerTank) == (b is PlayerTank);
     }
 
-    private void OnImpact(ICollidable target, Vector3 hitPoint)
+    // Todo lo estático que esté a DestructionRadius del punto de impacto se
+    // destruye, no solo el objeto puntual contra el que el segmento dio el hit.
+    private void DestroyNearbyProps(Vector3 hitPoint, IReadOnlyList<ICollidable> staticCollidables)
     {
-        IsAlive = false;
-
-        // Placeholder -- diferenciar la respuesta según el tipo de objetivo
-        // (remover el prop, dañar el tanque) queda para una próxima pasada,
-        // tratando props y tanques por separado.
-        Console.WriteLine($"Projectile impact on {target.GetType().Name} at {hitPoint}");
+        var radiusSquared = DestructionRadius * DestructionRadius;
+        foreach (var collidable in staticCollidables)
+        {
+            if (Vector3.DistanceSquared(collidable.GetPosition(), hitPoint) <= radiusSquared)
+            {
+                DestroyedProps.Add(collidable);
+            }
+        }
     }
 
     protected override void DrawMeshes()

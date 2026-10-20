@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using Microsoft.Xna.Framework;
+using TGC.MonoGame.TP;
 
 namespace TGC.MonoGame.TP.Collisions;
 
@@ -11,8 +12,7 @@ public class PhysicsSystem
     // colisionar entre sí (ninguno se mueve), así que ese par no se
     // vuelve a generar en Update() -- antes se enumeraba y se
     // descartaba con "a.IsStatic && b.IsStatic", que igual cuesta
-    // recorrer con miles de estáticos (ver progress/10 en el repo de
-    // contexto).
+    // recorrer con miles de estáticos.
     private readonly List<ICollidable> _staticCollidables = [];
     private readonly List<ICollidable> _dynamicCollidables = [];
     private readonly HashSet<ICollidable> _colliding = [];
@@ -67,6 +67,23 @@ public class PhysicsSystem
         CollisionResult result = CollisionDetector.CheckCollision(a, b);
 
         CollisionResolver.Resolve(a, b, result);
+
+        // Daño por choque físico -- a propósito NO vive dentro de CollisionResolver
+        // (esa clase resuelve física, no debería saber nada de "vida"). Se aplica
+        // acá, como un paso aparte, solo cuando la colisión fue real.
+        if (result.IsColliding)
+        {
+            ApplyCollisionDamage(a);
+            ApplyCollisionDamage(b);
+        }
+    }
+
+    private static void ApplyCollisionDamage(ICollidable collidable)
+    {
+        if (collidable is Tank tank)
+        {
+            tank.TakeCollisionDamage();
+        }
     }
 
     private bool BroadPhase(ICollidable a, ICollidable b)

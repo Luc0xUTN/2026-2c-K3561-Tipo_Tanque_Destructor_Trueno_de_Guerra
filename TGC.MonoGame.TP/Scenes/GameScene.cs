@@ -202,8 +202,23 @@ public class GameScene : Scene
         foreach (var projectile in _projectiles)
         {
             projectile.Update(elapsedTime, allTanks, _physicsSystem.StaticCollidables, _battlefield.GetHeightAt);
+
+            foreach (var destroyedProp in projectile.DestroyedProps)
+            {
+                _physicsSystem.Remove(destroyedProp);
+                _battlefield.RemoveProp(destroyedProp);
+            }
         }
         _projectiles.RemoveAll(p => !p.IsAlive);
+
+        // Tanques enemigos muertos: se sacan de colisiones y de la lista que
+        // actualiza/dibuja GameScene. La condición de victoria (ShouldTransition)
+        // se basa en que no quede ninguno.
+        foreach (var deadEnemy in _enemyTanks.FindAll(e => e.IsDead))
+        {
+            _physicsSystem.Remove(deadEnemy);
+        }
+        _enemyTanks.RemoveAll(e => e.IsDead);
 
         Mouse.SetPosition(_centerX,_centerY);
 
@@ -309,13 +324,23 @@ public class GameScene : Scene
 
     public bool ShouldTransition()
     {
-        // TODO: Implementar la lógica de ganar o perder
-        return false; 
+        return _tank.IsDead || _enemyTanks.Count == 0;
     }
 
     public Scene Transition()
     {
+        // Versión rápida para validar la idea end-to-end: solo mensaje por
+        // consola, sin pantalla de fin todavía (eso queda para una fase posterior).
+        if (_tank.IsDead)
+            Console.WriteLine("GAME OVER -- el jugador fue destruido.");
+        else
+            Console.WriteLine("VICTORIA -- todos los tanques enemigos fueron destruidos.");
+
         this.Unload();
-        return null; 
+
+        // TGCGame.Update llama Initialize()/LoadContent() sobre lo que devuelva
+        // esto sin chequear null -- tiene que ser una escena real, no null
+        // (mismo patrón que MenuScene.Transition al pasar a GameScene).
+        return new MenuScene(_game);
     }
 }

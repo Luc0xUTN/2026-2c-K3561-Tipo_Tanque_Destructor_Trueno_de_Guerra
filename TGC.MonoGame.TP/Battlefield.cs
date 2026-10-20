@@ -146,7 +146,13 @@ public class Battlefield
     {
         _forest.AddEntitiesToPhyisicSystem(physicsSystem);
     }
-    
+
+    // Destructibles: GameScene lo llama cuando un proyectil destruye un prop.
+    public void RemoveProp(ICollidable prop)
+    {
+        _forest.Remove(prop);
+    }
+
     public void Draw(GraphicsDevice device, Matrix view, Matrix projection)
     {
         _terrain.Draw(device, view, projection);

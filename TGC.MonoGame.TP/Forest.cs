@@ -65,7 +65,7 @@ public class Forest
                     float scaleVariation = (float)random.NextDouble() * 2;
                     Vector3 scale = new Vector3(scaleVariation, scaleVariation, scaleVariation);
 
-                    var rock = new Prop(new Vector3(posX, getHeightAt(posX, posZ), posZ), scale, new Vector3(0,0,0), color);
+                    var rock = new Rock(new Vector3(posX, getHeightAt(posX, posZ), posZ), scale, new Vector3(0,0,0), color);
                     rock.Initialize();
 
                     _rocks.Add(rock);
@@ -92,8 +92,21 @@ public class Forest
     public void AddEntitiesToPhyisicSystem(PhysicsSystem physicsSystem)
     {
         _trees.ForEach(t => physicsSystem.Add(t));
+        _rocks.ForEach(r => physicsSystem.Add(r));
     }
-    
+
+    // Destructibles: saca el prop de la lista que dibuja Draw(). No anima nada
+    // todavía -- desaparece directo, queda pendiente formalizar cómo se anima
+    // esa desaparición. Quitarlo de PhysicsSystem es responsabilidad de quien
+    // llama a esto (GameScene), porque Forest no tiene referencia al PhysicsSystem.
+    public void Remove(ICollidable collidable)
+    {
+        if (collidable is Prop prop)
+        {
+            _props.Remove(prop);
+        }
+    }
+
     public void LoadContent(Microsoft.Xna.Framework.Content.ContentManager content, string contentFolder3D, string shaderRoute)
     {
         var treeModel = content.Load<Model>(contentFolder3D + "forest/Tree/Tree");
