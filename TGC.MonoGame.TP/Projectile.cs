@@ -15,7 +15,7 @@ namespace TGC.MonoGame.TP;
 // tanques se deslicen entre colisionables -- issue #11).
 public class Projectile : Entity
 {
-    private const float Gravity = 20f; // unidades/s^2, provisorio -- cuánto arco se ve bien es cuestión de feel.
+    private const float Gravity = 9.8f;
     private const float Radius = 0.3f; // chico: solo para el margen del broad-phase del segmento.
     private const float MaxLifetimeSeconds = 6f; // red de seguridad si nunca choca con nada (se fue del mapa, quedó en una parábola infinita, etc).
 

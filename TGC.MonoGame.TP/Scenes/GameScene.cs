@@ -169,7 +169,7 @@ public class GameScene : Scene
         _hudView.Initialize();
 
         _shootSound = _contentManager.Load<SoundEffect>(ContentPaths.ContentFolderSounds + "Shoot");
-        _impactSound = _contentManager.Load<SoundEffect>(ContentPaths.ContentFolderSounds + "impact"); 
+        _impactSound = _contentManager.Load<SoundEffect>(ContentPaths.ContentFolderSounds + "Impact"); 
         _explosionSound = _contentManager.Load<SoundEffect>(ContentPaths.ContentFolderSounds + "Explosion"); 
         
         _backgroundSong =
@@ -254,8 +254,8 @@ public class GameScene : Scene
     private void TrySpawnProjectile(Tank tank)
     {
         if (!tank.WantsToFire) return;
-
-        const float muzzleSpeed = 60f; // provisorio, a ajustar por feel.
+        
+        const float muzzleSpeed = 400f;
 
         var canonTransform = tank.GetCanonWorldTransform();
         var spawnPosition = canonTransform.Translation;
