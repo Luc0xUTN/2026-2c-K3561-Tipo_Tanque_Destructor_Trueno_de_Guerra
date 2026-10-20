@@ -16,6 +16,7 @@ public class Button
         private Color _currentColor;
 
         private MouseState _previousMouseState;
+        private bool _isPressed;
 
         public bool IsCentered { get; private set; }
         public event EventHandler Click;
@@ -28,6 +29,7 @@ public class Button
             
             Vector2 size = _font.MeasureString(text);
             CalculateBounds(position, size);
+            _previousMouseState = Mouse.GetState();
         }
 
         public Button(Texture2D icon, Vector2 position, float scale = 1.0f, bool isCentered = false)
@@ -37,6 +39,7 @@ public class Button
             
             Vector2 size = new Vector2(icon.Width * scale, icon.Height * scale);
             CalculateBounds(position, size);
+            _previousMouseState = Mouse.GetState();
         }
 
         private void CalculateBounds(Vector2 position, Vector2 size)
@@ -66,12 +69,24 @@ public class Button
                 if (currentMouseState.LeftButton == ButtonState.Pressed && 
                     _previousMouseState.LeftButton == ButtonState.Released)
                 {
+                    _isPressed = true;
+                }
+
+                if (_isPressed && 
+                    currentMouseState.LeftButton == ButtonState.Released && 
+                    _previousMouseState.LeftButton == ButtonState.Pressed)
+                {
+                    _isPressed = false;
                     Click?.Invoke(this, EventArgs.Empty);
                 }
             }
             else
             {
                 _currentColor = _normalColor;
+                if (currentMouseState.LeftButton == ButtonState.Released)
+                {
+                    _isPressed = false;
+                }
             }
 
             _previousMouseState = currentMouseState;
