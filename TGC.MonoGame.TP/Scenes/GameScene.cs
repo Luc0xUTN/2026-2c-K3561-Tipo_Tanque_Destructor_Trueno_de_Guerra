@@ -29,6 +29,7 @@ public class GameScene : Scene
     private Tank _tank;
     private List<EnemyTank> _enemyTanks;
     private List<Projectile> _projectiles;
+    private List<Tank> _allTanks = new List<Tank>();
 
     private Song _backgroundSong;
 
@@ -131,6 +132,10 @@ public class GameScene : Scene
         _physicsSystem.Add(_tank);
         _enemyTanks.ForEach(t => _physicsSystem.Add(t));
         
+        _allTanks.Add(_tank);
+        _allTanks.AddRange(_enemyTanks);
+        
+        
         _game.IsMouseVisible = false; 
     }
 
@@ -216,11 +221,10 @@ public class GameScene : Scene
             TrySpawnProjectile(enemyTank);
         }
 
-        var allTanks = new List<Tank> { _tank };
-        allTanks.AddRange(_enemyTanks);
+        
         foreach (var projectile in _projectiles)
         {
-            projectile.Update(elapsedTime, allTanks, _physicsSystem.StaticCollidables, _battlefield.GetHeightAt);
+            projectile.Update(elapsedTime, _allTanks, _physicsSystem.StaticCollidables, _battlefield.GetHeightAt);
 
             foreach (var destroyedProp in projectile.DestroyedProps)
             {
@@ -229,7 +233,8 @@ public class GameScene : Scene
             }
         }
         _projectiles.RemoveAll(p => !p.IsAlive);
-
+        
+        
         // Tanques enemigos muertos: se sacan de colisiones y de la lista que
         // actualiza/dibuja GameScene. La condición de victoria (ShouldTransition)
         // se basa en que no quede ninguno.
@@ -239,6 +244,7 @@ public class GameScene : Scene
             _explosionSound.Play(GameSettings.SoundEffectsVolumen, 0f, 0f);
         }
         _enemyTanks.RemoveAll(e => e.IsDead);
+        _allTanks.RemoveAll(e => e.IsDead);
 
         _hudView.Update();
 
