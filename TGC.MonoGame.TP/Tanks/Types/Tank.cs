@@ -17,7 +17,7 @@ public class Tank : Entity
     // (ver el comentario de Update más abajo) -- con _dumping=2 en el constructor,
     // 100 da ~50u/s, el doble que antes (era 50f ~= 25u/s). Afecta a todos los
     // tanques por igual (Tank es la base de PlayerTank y EnemyTank).
-    private float _acceleration = 100f;
+    private float _acceleration = 50f;
     private float _deceleration = 3f; // no es frenado lineal -- controla qué tan brusco gira (diferencial entre orugas).
 
 
@@ -73,7 +73,7 @@ public class Tank : Entity
         var (vertices, faces) = BoxColliderFactory.CreateBox(halfWidth: 2f, height: 3f);
 
         _yaw = 0.0f;
-        _dumping = 2.0f;
+        _dumping = 3.0f;
 
         Collider = new ConvexCollider(this, vertices, faces);
         _battlefield = battlefield;
