@@ -19,6 +19,12 @@
 /processorParam:DebugMode=Auto
 /build:Effects/BasicShader.fx
 
+#begin Effects/ModelShader.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Effects/ModelShader.fx
+
 #begin Models/forest/Pine/pine.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
@@ -113,6 +119,30 @@
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
 /build:Models/forest/Rocks/Rock3.fbx
+
+#begin Models/forest/Tree/Tree.fbm/bark_0021.jpg
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=True
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Models/forest/Tree/Tree.fbm/bark_0021.jpg
+
+#begin Models/forest/Tree/Tree.fbm/DB2X2_L01.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=True
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Models/forest/Tree/Tree.fbm/DB2X2_L01.png
 
 #begin Models/forest/Tree/Tree.fbx
 /importer:FbxImporter

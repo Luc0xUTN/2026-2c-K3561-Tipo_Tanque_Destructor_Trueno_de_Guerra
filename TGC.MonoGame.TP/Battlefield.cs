@@ -28,6 +28,7 @@ public class Battlefield
     private const float LaneDesviacionRelativa = 0.21f; // provisorio — ruido orgánico fino, ya no es lo único que separa los carriles.
     private const float LaneHalfWidth = 7f; // ancho navegable fijo por ahora (la versión con bordes independientes y ancho variable queda para una iteración posterior).
 
+    private readonly string _treeShaderRoute; 
     private readonly string _shaderRoute;
     private readonly Color _terrainColor;
 
@@ -46,9 +47,10 @@ public class Battlefield
     // Flag que indica si se cargo el contenido de la entidad 
     public bool FlContentLoaded { get; private set; } = false;
     
-    public Battlefield(string shaderRoute, Color terrainColor)
+    public Battlefield(string shaderRoute, string treeShaderRoute, Color terrainColor)
     {
         _shaderRoute = shaderRoute;
+        _treeShaderRoute = treeShaderRoute;
         _terrainColor = terrainColor;
     }
 
@@ -138,7 +140,7 @@ public class Battlefield
     public void LoadContent(Microsoft.Xna.Framework.Content.ContentManager content, string contentFolder3D)
     {
         _terrain.LoadContent(content);
-        _forest.LoadContent(content, contentFolder3D, _shaderRoute);
+        _forest.LoadContent(content, contentFolder3D, _treeShaderRoute);
         FlContentLoaded = true; 
     }
 

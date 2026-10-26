@@ -34,6 +34,9 @@
   <ItemGroup>
     <Folder Include="Content\Sounds\" />
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Content\Effects\ModelShader.fx" />
+  </ItemGroup>
   <Target Name="RestoreDotnetTools" BeforeTargets="CollectPackageReferences">
     <Message Text="Restoring dotnet tools" Importance="High" />
     <Exec Command="dotnet tool restore" />

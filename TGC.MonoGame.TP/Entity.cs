@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
@@ -14,7 +15,6 @@ public abstract class Entity : ICollidable
     protected Vector3 _position; 
     protected Vector3 _scale;
     protected Quaternion _rotation;
-    protected Color _color; 
     
     protected Matrix _world;
 
@@ -37,12 +37,11 @@ public abstract class Entity : ICollidable
         SetWorldMatrix();
     }
     
-    public Entity(Vector3 position, Vector3 scale, Vector3 rotation, Color color)
+    public Entity(Vector3 position, Vector3 scale, Vector3 rotation)
     {
         _position = position;
         _scale = scale; 
         _rotation = Quaternion.CreateFromYawPitchRoll(rotation.X, rotation.Y, rotation.Z);
-        _color = color;
     }
 
     public void Initialize()
@@ -75,10 +74,9 @@ public abstract class Entity : ICollidable
     {
         _effect.Parameters["Projection"].SetValue(projection);
         _effect.Parameters["View"].SetValue(view);
-        _effect.Parameters["DiffuseColor"].SetValue(_color.ToVector3());
         
-        this.DrawMeshes();
+        this.DrawMeshes(graphicsDevice);
     }
 
-    protected abstract void DrawMeshes();
+    protected abstract void DrawMeshes(GraphicsDevice graphicsDevice);
 }

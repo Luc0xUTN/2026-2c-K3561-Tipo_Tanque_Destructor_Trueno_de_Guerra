@@ -18,8 +18,8 @@ public static class GameSettings
     // desde un menú de opciones más adelante.
     public static bool FriendlyFireEnabled { get; set; } = true;
     
-    public static float MusicVolumen { get; set; } = 1f;
-    public static float SoundEffectsVolumen { get; set; } = 0.2f;
+    public static float MusicVolumen { get; set; } = 0f;
+    public static float SoundEffectsVolumen { get; set; } = 0f;
 
     public static EventHandler GetMusicAdder(float value)
     {

@@ -18,7 +18,7 @@ public class PlayerTank: Tank
     private ButtonState _previousFireButtonState = ButtonState.Released;
     private float _fireTimer = FireCooldownSeconds;
 
-    public PlayerTank(Vector3 position, Vector3 scale, Vector3 rotation, Color color, Battlefield battlefield) : base(position, scale, rotation, color, battlefield)
+    public PlayerTank(Vector3 position, Vector3 scale, Vector3 rotation, Battlefield battlefield) : base(position, scale, rotation, battlefield)
     {
     }
 

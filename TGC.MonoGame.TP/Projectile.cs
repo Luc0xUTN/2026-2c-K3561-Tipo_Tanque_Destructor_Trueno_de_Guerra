@@ -30,17 +30,20 @@ public class Projectile : Entity
 
     public bool IsAlive { get; private set; } = true;
 
+    private Color _color;
+    
     // Props que este impacto destruyó (vacía si no hubo impacto contra el
     // escenario este frame) -- GameScene los lee después de Update() y es quien
     // efectivamente los saca de Forest/PhysicsSystem (Projectile no tiene
     // referencia a ninguno de los dos, solo "reporta" qué pasó).
     public List<ICollidable> DestroyedProps { get; } = new();
 
-    public Projectile(Vector3 position, Vector3 velocity, Tank owner)
-        : base(position, Vector3.One, Vector3.Zero, Color.Gold)
+    public Projectile(Vector3 position, Vector3 velocity, Tank owner, Color color)
+        : base(position, Vector3.One, Vector3.Zero)
     {
         _velocity = velocity;
         _owner = owner;
+        _color = color;
 
         UpdateRotation();
         SetWorldMatrix();
@@ -158,8 +161,10 @@ public class Projectile : Entity
         }
     }
 
-    protected override void DrawMeshes()
+    protected override void DrawMeshes(GraphicsDevice graphicsDevice)
     {
+        _effect.Parameters["DiffuseColor"].SetValue(_color.ToVector3());
+        
         foreach (var mesh in _model.Meshes)
         {
             _effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * _world);

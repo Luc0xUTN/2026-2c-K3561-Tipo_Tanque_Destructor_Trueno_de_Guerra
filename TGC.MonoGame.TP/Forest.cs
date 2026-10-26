@@ -12,7 +12,7 @@ public class Forest
 {
     private List<Prop> _props;
     private List<Prop> _trees;
-    private List<Prop> _rocks;
+    private List<Rock> _rocks;
 
     private float _rockProbability = 0.1f;
 
@@ -29,7 +29,7 @@ public class Forest
         _seed = seed;
         _props = new List<Prop>();
         _trees = new List<Prop>();
-        _rocks = new List<Prop>();
+        _rocks = new List<Rock>();
         var random = new Random(seed);
 
         int countX = (int)MathF.Floor(mapSize.X / spacing);
@@ -73,13 +73,11 @@ public class Forest
                 }
                 else
                 {
-                    Color color = Color.Lerp(Color.SaddleBrown, Color.DarkGreen, rColor);
-
                     float scaleVariationY = (float)random.NextDouble() * 2;
                     float scaleVariationXZ = (float)random.NextDouble() + 1;
                     Vector3 scale = new Vector3(scaleVariationXZ, scaleVariationY, scaleVariationXZ);
 
-                    var tree = new Tree(new Vector3(posX, getHeightAt(posX, posZ), posZ), scale, new Vector3(0,0,0), color);
+                    var tree = new Tree(new Vector3(posX, getHeightAt(posX, posZ), posZ), scale, new Vector3(0,0,0));
                     tree.Initialize();
 
                     _trees.Add(tree);
@@ -110,7 +108,15 @@ public class Forest
     public void LoadContent(Microsoft.Xna.Framework.Content.ContentManager content, string contentFolder3D, string shaderRoute)
     {
         var treeModel = content.Load<Model>(contentFolder3D + "forest/Tree/Tree");
-        var effect = content.Load<Effect>(shaderRoute);
+        Texture leavesTexture = content.Load<Texture>(contentFolder3D + "forest/Tree/Tree.fbm/DB2X2_L01");
+        Texture trunkTexture = content.Load<Texture>(contentFolder3D + "forest/Tree/Tree.fbm/bark_0021");
+
+        List<Texture> treeTextures = new List<Texture>();
+        treeTextures.Add(trunkTexture);
+        treeTextures.Add(leavesTexture);
+        
+        var treeEffect = content.Load<Effect>(shaderRoute);
+        var rockEffect = content.Load<Effect>(ContentPaths.ContentFolderEffects + "BasicShader"); 
         List<Model> rockModels = new List<Model>();
         for (int i = 0; i < 4; i++)
         {
@@ -118,15 +124,15 @@ public class Forest
             rockModels.Add(rockModel);
         }
         
-        _trees.ForEach(tree => tree.LoadContent(treeModel, effect));
-
+        _trees.ForEach(tree => tree.LoadContent(treeModel, treeEffect, treeTextures));
+        
         // Misma seed que Initialize, en una instancia de Random independiente: esto
         // solo elige variedad visual (qué modelo de roca usar), no posiciones.
         var random = new Random(_seed);
         _rocks.ForEach(rock =>
         {
             int rockType = (int)random.NextInt64(rockModels.Count);
-            rock.LoadContent(rockModels[rockType], effect);
+            rock.LoadContent(rockModels[rockType], rockEffect);
         });
 
     }

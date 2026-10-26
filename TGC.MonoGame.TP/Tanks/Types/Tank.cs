@@ -13,6 +13,7 @@ namespace TGC.MonoGame.TP;
 // Responsabilidad: Representar a un tanque en sí 
 public class Tank : Entity
 {
+    private Texture _texture; 
     // La velocidad terminal del modelo de orugas amortiguadas es ~accel/_dumping
     // (ver el comentario de Update más abajo) -- con _dumping=2 en el constructor,
     // 100 da ~50u/s, el doble que antes (era 50f ~= 25u/s). Afecta a todos los
@@ -65,7 +66,7 @@ public class Tank : Entity
     // entera (truncada a 0 salvo que Health == MaxHealth).
     public float HealthRatio => (float)Health / MaxHealth;
 
-    public Tank(Vector3 position,Vector3 scale, Vector3 rotation, Color color, Battlefield battlefield) : base(position, scale, rotation, color )
+    public Tank(Vector3 position,Vector3 scale, Vector3 rotation, Battlefield battlefield) : base(position, scale, rotation)
     {
         IsSolid = true;
         IsStatic = false;
@@ -96,9 +97,10 @@ public class Tank : Entity
         _collisionDamageCooldownTimer = CollisionDamageCooldownSeconds;
     }
 
-    public void LoadContent(Model model,  Effect effect, string turretBoneName, string canonBoneName)
+    public void LoadContent(Model model, Texture texture, Effect effect, string turretBoneName, string canonBoneName)
     {
-        base.LoadContent(model, effect);
+        base.LoadContent(model,  effect);
+        _texture = texture;
 
         _absoluteWorldsMatrix = new Matrix[model.Bones.Count]; 
         
@@ -211,8 +213,10 @@ public class Tank : Entity
         _rotationDirection = direction;
     }
     
-    protected override void DrawMeshes()
+    protected override void DrawMeshes(GraphicsDevice graphicsDevice)
     {
+        _effect.Parameters["ModelTexture"].SetValue(_texture);
+        
         _model.CopyAbsoluteBoneTransformsTo(_absoluteWorldsMatrix); 
         foreach (var mesh in _model.Meshes)
         {
