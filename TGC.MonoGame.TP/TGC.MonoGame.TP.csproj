@@ -36,6 +36,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Content\Effects\ModelShader.fx" />
+    <ClCompile Include="Content\Effects\TreeShader.fx" />
   </ItemGroup>
   <Target Name="RestoreDotnetTools" BeforeTargets="CollectPackageReferences">
     <Message Text="Restoring dotnet tools" Importance="High" />

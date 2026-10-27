@@ -48,7 +48,7 @@ public class MenuScene : Scene
         
         _camera = new IsometricCamera(camPosition, Vector3.Zero, Vector3.Up, 0.15f);
         
-        _battlefield = new Battlefield(ContentPaths.ContentFolderEffects + "BasicShader", ContentPaths.ContentFolderEffects + "ModelShader", Color.Green);
+        _battlefield = new Battlefield(ContentPaths.ContentFolderEffects + "BasicShader", ContentPaths.ContentFolderEffects + "TreeShader", Color.Green);
         _battlefield.Initialize(_device, GameSettings.MapSize); 
         
         int farPlaneDistance = (int) Math.Ceiling(Math.Sqrt(Math.Pow(GameSettings.MapSize, 2) + Math.Pow(GameSettings.MapSize, 2))); 

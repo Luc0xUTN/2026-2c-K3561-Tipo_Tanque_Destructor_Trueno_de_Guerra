@@ -84,7 +84,7 @@ public class GameScene : Scene
 
         if (_battlefield == null)
         {
-            _battlefield = new Battlefield(ContentPaths.ContentFolderEffects + "BasicShader",ContentPaths.ContentFolderEffects + "ModelShader", Color.Green);
+            _battlefield = new Battlefield(ContentPaths.ContentFolderEffects + "BasicShader",ContentPaths.ContentFolderEffects + "TreeShader", Color.Green);
             _battlefield.Initialize(_device, GameSettings.MapSize);
         }
         _battlefield.AddEntitiesToPhyisicSystem(_physicsSystem);

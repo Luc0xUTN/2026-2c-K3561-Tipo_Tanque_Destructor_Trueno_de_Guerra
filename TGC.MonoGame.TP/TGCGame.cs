@@ -26,7 +26,6 @@ public class TGCGame : Game
 
         _graphics.PreferredBackBufferWidth = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width - 100;
         _graphics.PreferredBackBufferHeight = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height - 100;
-        
         // Para que el juego sea pantalla completa se puede usar Graphics IsFullScreen.
         // Carpeta raiz donde va a estar toda la Media.
         Content.RootDirectory = "Content";
