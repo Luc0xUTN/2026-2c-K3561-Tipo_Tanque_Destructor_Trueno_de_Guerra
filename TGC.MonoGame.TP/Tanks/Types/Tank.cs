@@ -37,9 +37,11 @@ public class Tank : Entity
     private float _rightCaterpillarSpeed = 0;
     private float _rightCaterpillarPosition = 0.0f;
 
-    private float _dumping = 1.0f;
+    private float _dumping = 6.0f;
     
-    private float _caterpillarDistance = 2.0f; 
+    private float _caterpillarDistance = 2.0f;
+
+    private float _caterpillarTextureScale = 0.25f; 
     
     private float _yaw; 
     
@@ -83,8 +85,7 @@ public class Tank : Entity
         var (vertices, faces) = BoxColliderFactory.CreateBox(halfWidth: 2f, height: 3f);
 
         _yaw = 0.0f;
-        _dumping = 3.0f;
-
+        
         Collider = new ConvexCollider(this, vertices, faces);
         _battlefield = battlefield;
     }
@@ -194,8 +195,8 @@ public class Tank : Entity
         
         _position += _world.Forward * tankSpeed * elapsedTime;
 
-        _leftCaterpillarPosition += _leftCaterpillarSpeed * elapsedTime;
-        _rightCaterpillarPosition += _rightCaterpillarSpeed * elapsedTime;
+        _leftCaterpillarPosition += _leftCaterpillarSpeed * _caterpillarTextureScale * elapsedTime;
+        _rightCaterpillarPosition += _rightCaterpillarSpeed * _caterpillarTextureScale * elapsedTime;
         
         const float floorDistance = 0.1f; 
         _position.Y = _battlefield.GetHeightAt(_position.X, _position.Z) + floorDistance ;
