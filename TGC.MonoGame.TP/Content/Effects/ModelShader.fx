@@ -11,6 +11,8 @@ float4x4 World;
 float4x4 View;
 float4x4 Projection;
 
+float2 TexturePositions = float2(0,0); 
+
 float Time = 0;
 
 struct VertexShaderInput
@@ -54,7 +56,7 @@ VertexShaderOutput MainVS(in VertexShaderInput input)
 
 float4 MainPS(VertexShaderOutput input) : COLOR
 {
-    float4 textureColor = tex2D(textureSampler, input.TextureCoordinate);
+    float4 textureColor = tex2D(textureSampler, input.TextureCoordinate + TexturePositions);
     
     // float condition = step(0.0f, min(input.TextureCoordinate.x, input.TextureCoordinate.y)) * step(max(input.TextureCoordinate.x, input.TextureCoordinate.y), 1.0f); // Verifica si las coordenadas de textura se encuentran entre el (0,0) y (1,1)
     // float4 finalColor = lerp(float4(DiffuseColor,1.0f), textureColor, condition);

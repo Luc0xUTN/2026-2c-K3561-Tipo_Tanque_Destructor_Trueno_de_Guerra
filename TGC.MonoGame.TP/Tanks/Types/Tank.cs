@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Numerics;
+using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using TGC.MonoGame.TP.Collisions;
@@ -12,8 +12,14 @@ namespace TGC.MonoGame.TP;
 
 // Responsabilidad: Representar a un tanque en sí 
 public class Tank : Entity
-{
-    private Texture _texture; 
+{ 
+    private Texture _caterpillarTexture;
+
+    private List<ModelMesh> _generalMeshes;
+    private ModelMesh _leftCaterpillarMesh;
+    private ModelMesh _rightCaterpillarMesh;
+    
+    private Texture _tankTexture; 
     // La velocidad terminal del modelo de orugas amortiguadas es ~accel/_dumping
     // (ver el comentario de Update más abajo) -- con _dumping=2 en el constructor,
     // 100 da ~50u/s, el doble que antes (era 50f ~= 25u/s). Afecta a todos los
@@ -26,11 +32,14 @@ public class Tank : Entity
     private int _rotationDirection = 0;
 
     private float _leftCaterpillarSpeed = 0;
+    private float _leftCaterpillarPosition = 0.0f; 
+
     private float _rightCaterpillarSpeed = 0;
+    private float _rightCaterpillarPosition = 0.0f;
+
     private float _dumping = 1.0f;
     
     private float _caterpillarDistance = 2.0f; 
-    
     
     private float _yaw; 
     
@@ -97,11 +106,13 @@ public class Tank : Entity
         _collisionDamageCooldownTimer = CollisionDamageCooldownSeconds;
     }
 
-    public void LoadContent(Model model, Texture texture, Effect effect, string turretBoneName, string canonBoneName)
+    public void LoadContent(Model model, Texture tankTexture, Texture caterpillarTexture,  Effect tankEffect,  string turretBoneName, string canonBoneName, string leftCaterpillarName, string rightCaterpillarName)
     {
-        base.LoadContent(model,  effect);
-        _texture = texture;
-
+        _model = model;
+        _effect = tankEffect;
+        _tankTexture = tankTexture;
+        _caterpillarTexture = caterpillarTexture;
+        
         _absoluteWorldsMatrix = new Matrix[model.Bones.Count]; 
         
         foreach (var bone in _model.Bones)
@@ -114,7 +125,31 @@ public class Tank : Entity
             {
                 _canon = new Canon(bone);
             }
-        }   
+        }
+
+        _generalMeshes = _model.Meshes.Where(m => m.Name != leftCaterpillarName && m.Name != rightCaterpillarName).ToList();
+
+        foreach (var generalMesh in _generalMeshes)
+        {
+            foreach (var meshPart in generalMesh.MeshParts)
+            {
+                meshPart.Effect = tankEffect; 
+            }
+        }
+        
+        _leftCaterpillarMesh = _model.Meshes.FirstOrDefault(m => m.Name == leftCaterpillarName);
+    
+        foreach (var meshPart in _leftCaterpillarMesh.MeshParts)
+        {
+            meshPart.Effect = _effect; 
+        }
+        
+        _rightCaterpillarMesh = _model.Meshes.FirstOrDefault(m => m.Name == rightCaterpillarName);
+        
+        foreach (var meshPart in _rightCaterpillarMesh.MeshParts)
+        {
+            meshPart.Effect = _effect; 
+        }
     }
 
     public Turret GetTurret()
@@ -158,6 +193,9 @@ public class Tank : Entity
         _yaw += difAngle; 
         
         _position += _world.Forward * tankSpeed * elapsedTime;
+
+        _leftCaterpillarPosition += _leftCaterpillarSpeed * elapsedTime;
+        _rightCaterpillarPosition += _rightCaterpillarSpeed * elapsedTime;
         
         const float floorDistance = 0.1f; 
         _position.Y = _battlefield.GetHeightAt(_position.X, _position.Z) + floorDistance ;
@@ -215,13 +253,30 @@ public class Tank : Entity
     
     protected override void DrawMeshes(GraphicsDevice graphicsDevice)
     {
-        _effect.Parameters["ModelTexture"].SetValue(_texture);
+        _effect.Parameters["ModelTexture"].SetValue(_tankTexture);
+        _effect.Parameters["TexturePositions"].SetValue(new Vector2(0,0));
         
         _model.CopyAbsoluteBoneTransformsTo(_absoluteWorldsMatrix); 
-        foreach (var mesh in _model.Meshes)
+        foreach (var mesh in _generalMeshes)
         {
             _effect.Parameters["World"].SetValue(_absoluteWorldsMatrix[mesh.ParentBone.Index] * _world);
             mesh.Draw();
         }
+        
+        _drawCatterpillars(graphicsDevice);
+    }
+
+    private void _drawCatterpillars(GraphicsDevice graphicsDevice)
+    {
+        _effect.Parameters["ModelTexture"].SetValue(_caterpillarTexture);
+        
+        _effect.Parameters["TexturePositions"].SetValue(new Vector2(0, _leftCaterpillarPosition));
+        _effect.Parameters["World"].SetValue(_absoluteWorldsMatrix[_leftCaterpillarMesh.ParentBone.Index]* _world);
+        _leftCaterpillarMesh.Draw();
+        
+        
+        _effect.Parameters["TexturePositions"].SetValue(new Vector2(0, _rightCaterpillarPosition));
+        _effect.Parameters["World"].SetValue(_absoluteWorldsMatrix[_rightCaterpillarMesh.ParentBone.Index] * _world);
+        _rightCaterpillarMesh.Draw();
     }
 }

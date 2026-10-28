@@ -148,22 +148,24 @@ public class GameScene : Scene
 
         _basicEffect = _contentManager.Load<Effect>(ContentPaths.ContentFolderEffects + "BasicShader");
         Effect modelEffect = _contentManager.Load<Effect>(ContentPaths.ContentFolderEffects + "ModelShader");
-        
+        Effect caterpillarEffect =
+            _contentManager.Load<Effect>(ContentPaths.ContentFolderEffects + "CaterpillarEffect");
         // Cada tanque carga el modelo con su propio ContentManager. Si todos
         // comparten uno (como antes), ContentManager cachea el Model por path y
         // los 4 tanques terminan compartiendo los mismos ModelBone de torreta y
         // cañón -- el último que actualiza en el frame pisa a los demás.
         Model playerModel = new ContentManager(_game.Services, _contentManager.RootDirectory).Load<Model>(ContentPaths.ContentFolder3D + "tanks/Panzer/Panzer");
         Texture playerTexture = _contentManager.Load<Texture>(ContentPaths.ContentFolder3D + "tanks/Panzer/PzVl_Tiger_I");
+        Texture caterpillarTexture = _contentManager.Load<Texture>(ContentPaths.ContentFolder3D + "tanks/Panzer/PzVI_Tiger_I_track_SM");
         
-        _tank.LoadContent(playerModel, playerTexture, modelEffect, "Turret", "Cannon");
+        _tank.LoadContent(playerModel, playerTexture, caterpillarTexture, modelEffect, "Turret", "Cannon", "Treadmill1", "Treadmill2");
 
         foreach (var enemyTank in _enemyTanks)
         {
             Model enemyModel = new ContentManager(_game.Services, _contentManager.RootDirectory).Load<Model>(ContentPaths.ContentFolder3D + "tanks/Panzer/Panzer");
             Texture enemyTexture =
                 _contentManager.Load<Texture>(ContentPaths.ContentFolder3D + "tanks/Panzer/PzVl_Tiger_I");
-            enemyTank.LoadContent(enemyModel,enemyTexture, modelEffect, "Turret", "Cannon");
+            enemyTank.LoadContent(enemyModel,enemyTexture, caterpillarTexture, modelEffect, "Turret", "Cannon", "Treadmill1", "Treadmill2");
         }
 
         _projectileModel = _contentManager.Load<Model>(ContentPaths.ContentFolder3D + "projectiles/Bullet");
