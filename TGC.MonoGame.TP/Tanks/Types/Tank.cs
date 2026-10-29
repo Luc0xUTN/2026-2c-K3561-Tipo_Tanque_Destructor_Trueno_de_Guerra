@@ -18,6 +18,10 @@ public class Tank : Entity
     private List<ModelMesh> _generalMeshes;
     private ModelMesh _leftCaterpillarMesh;
     private ModelMesh _rightCaterpillarMesh;
+    private List<ModelBone> _leftWheelBones = new List<ModelBone>();
+    private List<ModelBone> _rightWheelBones = new List<ModelBone>();
+    private ModelBone _leftDriveSprocket;
+    private ModelBone _rightDriveSprocket;
     
     private Texture _tankTexture; 
     // La velocidad terminal del modelo de orugas amortiguadas es ~accel/_dumping
@@ -40,8 +44,9 @@ public class Tank : Entity
     private float _dumping = 6.0f;
     
     private float _caterpillarDistance = 2.0f;
-
     private float _caterpillarTextureScale = 0.25f; 
+    
+    private float _wheelRadius = 0.5f;
     
     private float _yaw; 
     
@@ -107,7 +112,7 @@ public class Tank : Entity
         _collisionDamageCooldownTimer = CollisionDamageCooldownSeconds;
     }
 
-    public void LoadContent(Model model, Texture tankTexture, Texture caterpillarTexture,  Effect tankEffect,  string turretBoneName, string canonBoneName, string leftCaterpillarName, string rightCaterpillarName)
+    public void LoadContent(Model model, Texture tankTexture, Texture caterpillarTexture,  Effect tankEffect,  string turretBoneName, string canonBoneName, string leftCaterpillarName, string rightCaterpillarName, List<string> leftWheelsNames, List<string> rightWheelNames, string leftDriveSprocket, string rightDriveSprocket)
     {
         _model = model;
         _effect = tankEffect;
@@ -126,6 +131,14 @@ public class Tank : Entity
             {
                 _canon = new Canon(bone);
             }
+            else if (leftWheelsNames.Contains(bone.Name))
+            {   
+                _leftWheelBones.Add(bone);
+            }
+            else if (rightWheelNames.Contains(bone.Name))
+            {
+                _rightWheelBones.Add(bone);
+            }
         }
 
         _generalMeshes = _model.Meshes.Where(m => m.Name != leftCaterpillarName && m.Name != rightCaterpillarName).ToList();
@@ -137,6 +150,9 @@ public class Tank : Entity
                 meshPart.Effect = tankEffect; 
             }
         }
+        
+        _leftDriveSprocket = _model.Bones.FirstOrDefault(m => m.Name == leftDriveSprocket);
+        _rightDriveSprocket = _model.Bones.FirstOrDefault(m => m.Name == rightDriveSprocket);
         
         _leftCaterpillarMesh = _model.Meshes.FirstOrDefault(m => m.Name == leftCaterpillarName);
     
@@ -205,7 +221,9 @@ public class Tank : Entity
         Quaternion terrainRotation = _getTerrainRotationQuaternion(); 
         
         _rotation = tankRotation * terrainRotation;
-            
+        
+        _setWheelsRotation(elapsedTime);
+        
         SetWorldMatrix();
 
         
@@ -224,6 +242,21 @@ public class Tank : Entity
         return _absoluteWorldsMatrix[_canon.BoneIndex] * _world;
     }
 
+    private void _setWheelsRotation(float elapsedTime)
+    {
+        float difAngleRightWheels = (_leftCaterpillarSpeed / _wheelRadius) * elapsedTime;
+        float difAngleLeftWheels = (_rightCaterpillarSpeed / _wheelRadius) * elapsedTime;
+        
+        Matrix rotationRightWheels = Matrix.CreateFromYawPitchRoll(0, difAngleRightWheels, 0);
+        Matrix rotationLeftWheels = Matrix.CreateFromYawPitchRoll(0, difAngleLeftWheels, 0);
+        
+        _rightWheelBones.ForEach(w => w.Transform = Matrix.Transpose(rotationRightWheels) * w.Transform);
+        _leftWheelBones.ForEach(w => w.Transform = Matrix.Transpose(rotationLeftWheels) * w.Transform);
+        
+        _rightDriveSprocket.Transform = rotationRightWheels * _rightDriveSprocket.Transform;
+        _leftDriveSprocket.Transform = rotationLeftWheels * _leftDriveSprocket.Transform;
+    }
+    
     private Quaternion _getTerrainRotationQuaternion()
     {
         Vector3 normalTerreno = _battlefield.GetNormalAt(_position.X, _position.Z);

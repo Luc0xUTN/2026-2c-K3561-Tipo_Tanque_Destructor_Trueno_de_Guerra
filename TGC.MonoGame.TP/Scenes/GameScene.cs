@@ -157,15 +157,25 @@ public class GameScene : Scene
         Model playerModel = new ContentManager(_game.Services, _contentManager.RootDirectory).Load<Model>(ContentPaths.ContentFolder3D + "tanks/Panzer/Panzer");
         Texture playerTexture = _contentManager.Load<Texture>(ContentPaths.ContentFolder3D + "tanks/Panzer/PzVl_Tiger_I");
         Texture caterpillarTexture = _contentManager.Load<Texture>(ContentPaths.ContentFolder3D + "tanks/Panzer/PzVI_Tiger_I_track_SM");
+
+        const string turretName = "Turret";
+        const string cannonName = "Cannon";
+        const string leftCaterpillarName = "Treadmill1";
+        const string rightCaterpillarName = "Treadmill2";
+        List<String> leftWheelsNames = new List<string> {"Wheel1", "Wheel2", "Wheel3", "Wheel4", "Wheel5", "Wheel6", "Wheel7", "Wheel8", "Wheel9"};
+        List<String> rightWheelsNames = new List<string>
+            { "Wheel11", "Wheel12", "Wheel13", "Wheel14", "Wheel15", "Wheel16", "Wheel17", "Wheel18", "Wheel19"};
+        string leftDriveSprocket = "Wheel10";
+        string rightDriveSprocket = "Wheel20"; 
         
-        _tank.LoadContent(playerModel, playerTexture, caterpillarTexture, modelEffect, "Turret", "Cannon", "Treadmill1", "Treadmill2");
+        _tank.LoadContent(playerModel, playerTexture, caterpillarTexture, modelEffect, turretName, cannonName, leftCaterpillarName, rightCaterpillarName, leftWheelsNames, rightWheelsNames, leftDriveSprocket, rightDriveSprocket);
 
         foreach (var enemyTank in _enemyTanks)
         {
             Model enemyModel = new ContentManager(_game.Services, _contentManager.RootDirectory).Load<Model>(ContentPaths.ContentFolder3D + "tanks/Panzer/Panzer");
             Texture enemyTexture =
                 _contentManager.Load<Texture>(ContentPaths.ContentFolder3D + "tanks/Panzer/PzVl_Tiger_I");
-            enemyTank.LoadContent(enemyModel,enemyTexture, caterpillarTexture, modelEffect, "Turret", "Cannon", "Treadmill1", "Treadmill2");
+            enemyTank.LoadContent(enemyModel,enemyTexture, caterpillarTexture, modelEffect, turretName, cannonName, leftCaterpillarName, rightCaterpillarName, leftWheelsNames, rightWheelsNames, leftDriveSprocket, rightDriveSprocket);
         }
 
         _projectileModel = _contentManager.Load<Model>(ContentPaths.ContentFolder3D + "projectiles/Bullet");
