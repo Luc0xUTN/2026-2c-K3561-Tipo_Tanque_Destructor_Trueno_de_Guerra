@@ -26,6 +26,7 @@ public class Prop : Entity
         
         base.LoadContent(model, effect);
     }
+
     
     protected override void DrawMeshes(GraphicsDevice graphicsDevice)
     {

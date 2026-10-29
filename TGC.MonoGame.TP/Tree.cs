@@ -13,12 +13,15 @@ public class Tree : Prop
 
     }
 
-    public void Initialize()
+    public override void Initialize()
     {
         base.Initialize();
         var (vertices, faces) = BoxColliderFactory.CreateBox(halfWidth: 0.5f, height: 3f);
-        Collider =  new ConvexCollider(this, vertices, faces);
-        BoundingSphere = new BoundingSphere(_position, Collider.BoundingRadius);
+        Collider = new ConvexCollider(this, vertices, faces);
+        
+        float maxScale = System.MathF.Max(_scale.X, System.MathF.Max(_scale.Y, _scale.Z));
+        var center = _position + Vector3.Up * (1.9f * _scale.Y);
+        BoundingSphere = new BoundingSphere(center, 2.8f * maxScale);
     }
     protected override void DrawMeshes(GraphicsDevice graphicsDevice)
     {

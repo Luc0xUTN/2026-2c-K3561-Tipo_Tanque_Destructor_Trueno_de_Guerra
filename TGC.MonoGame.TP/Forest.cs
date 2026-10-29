@@ -14,6 +14,9 @@ public class Forest
     private List<Prop> _trees;
     private List<Rock> _rocks;
 
+    private Effect _rockEffect; 
+    private Effect _treeEffect;
+    
     private float _rockProbability = 0.1f;
 
     private int _seed; // guardada para reutilizarla en LoadContent (selección de modelo de roca)
@@ -64,8 +67,9 @@ public class Forest
                     Color color = Color.Lerp(Color.DimGray, Color.DarkGray, rColor);
                     float scaleVariation = (float)random.NextDouble() * 2;
                     Vector3 scale = new Vector3(scaleVariation, scaleVariation, scaleVariation);
+                    int rockType = (int)random.NextInt64(4);
 
-                    var rock = new Rock(new Vector3(posX, getHeightAt(posX, posZ), posZ), scale, new Vector3(0,0,0), color);
+                    var rock = new Rock(new Vector3(posX, getHeightAt(posX, posZ), posZ), scale, new Vector3(0,0,0), color, rockType);
                     rock.Initialize();
 
                     _rocks.Add(rock);
@@ -115,8 +119,8 @@ public class Forest
         treeTextures.Add(trunkTexture);
         treeTextures.Add(leavesTexture);
         
-        var treeEffect = content.Load<Effect>(shaderRoute);
-        var rockEffect = content.Load<Effect>(ContentPaths.ContentFolderEffects + "BasicShader"); 
+        _treeEffect  = content.Load<Effect>(shaderRoute);
+        _rockEffect = content.Load<Effect>(ContentPaths.ContentFolderEffects + "BasicShader"); 
         List<Model> rockModels = new List<Model>();
         for (int i = 0; i < 4; i++)
         {
@@ -124,21 +128,23 @@ public class Forest
             rockModels.Add(rockModel);
         }
         
-        _trees.ForEach(tree => tree.LoadContent(treeModel, treeEffect, treeTextures));
+        _trees.ForEach(tree => tree.LoadContent(treeModel, _treeEffect, treeTextures));
         
-        // Misma seed que Initialize, en una instancia de Random independiente: esto
-        // solo elige variedad visual (qué modelo de roca usar), no posiciones.
-        var random = new Random(_seed);
         _rocks.ForEach(rock =>
         {
-            int rockType = (int)random.NextInt64(rockModels.Count);
-            rock.LoadContent(rockModels[rockType], rockEffect);
+            rock.LoadContent(rockModels[rock.RockType], _rockEffect);
         });
 
     }
 
     public void Draw(GraphicsDevice device, Matrix view, Matrix projection, BoundingFrustum boundingFrustum)
     {
+        _rockEffect.Parameters["Projection"].SetValue(projection);
+        _rockEffect.Parameters["View"].SetValue(view);
+        
+        _treeEffect.Parameters["Projection"].SetValue(projection);
+        _treeEffect.Parameters["View"].SetValue(view);
+        
         _props.ForEach(prop =>
         {
             if (boundingFrustum.Intersects(prop.BoundingSphere))

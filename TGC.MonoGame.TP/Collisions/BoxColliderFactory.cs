@@ -10,17 +10,30 @@ public static class BoxColliderFactory
 {
     public static (List<Vector3> vertices, List<Face> faces) CreateBox(float halfWidth, float height)
     {
+        return CreateBox(halfWidth, 0f, height, halfWidth);
+    }
+
+    public static (List<Vector3> vertices, List<Face> faces) CreateBox(float halfWidth, float minY, float maxY, float halfDepth)
+    {
+        return CreateBoxFromBounds(
+            new Vector3(-halfWidth, minY, -halfDepth),
+            new Vector3( halfWidth, maxY,  halfDepth)
+        );
+    }
+
+    public static (List<Vector3> vertices, List<Face> faces) CreateBoxFromBounds(Vector3 min, Vector3 max)
+    {
         var vertices = new List<Vector3>
         {
-            new(-halfWidth, 0, -halfWidth),
-            new( halfWidth, 0, -halfWidth),
-            new( halfWidth, 0,  halfWidth),
-            new(-halfWidth, 0,  halfWidth),
+            new(min.X, min.Y, min.Z),
+            new(max.X, min.Y, min.Z),
+            new(max.X, min.Y, max.Z),
+            new(min.X, min.Y, max.Z),
 
-            new(-halfWidth, height, -halfWidth),
-            new( halfWidth, height, -halfWidth),
-            new( halfWidth, height,  halfWidth),
-            new(-halfWidth, height,  halfWidth)
+            new(min.X, max.Y, min.Z),
+            new(max.X, max.Y, min.Z),
+            new(max.X, max.Y, max.Z),
+            new(min.X, max.Y, max.Z)
         };
 
         var faces = new List<Face>

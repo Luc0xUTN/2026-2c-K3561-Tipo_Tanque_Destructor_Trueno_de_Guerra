@@ -44,7 +44,7 @@ public abstract class Entity : ICollidable
         _rotation = Quaternion.CreateFromYawPitchRoll(rotation.X, rotation.Y, rotation.Z);
     }
 
-    public void Initialize()
+    public virtual void Initialize()
     {
         SetWorldMatrix();
     }
