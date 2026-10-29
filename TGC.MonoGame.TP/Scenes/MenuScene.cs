@@ -10,6 +10,7 @@ namespace TGC.MonoGame.TP.scenes;
 
 public class MenuScene : Scene
 {
+    private BoundingFrustum _boundingFrustum;
 
     private Battlefield _battlefield;
     
@@ -59,6 +60,7 @@ public class MenuScene : Scene
 
         _spriteBatch = new SpriteBatch(_device);
         
+        _boundingFrustum = new BoundingFrustum(_camera.GetView() * _projection);
     }
 
     public void LoadContent()
@@ -72,16 +74,16 @@ public class MenuScene : Scene
 
     public void Update(float elapsedTime)
     {
-        KeyboardState keyboardState = Keyboard.GetState();
-        MouseState mouseState = Mouse.GetState();
-
         _view.Update();
         _camera.Update(elapsedTime);
+        
+        _boundingFrustum.Matrix = _camera.GetView() * _projection;
     }
 
     public void Draw()
     {
-        _battlefield.Draw(_device, _camera.GetView(),  _projection);
+
+        _battlefield.Draw(_device, _camera.GetView(),  _projection, _boundingFrustum);
         
         _view.Draw();
     }

@@ -20,7 +20,7 @@ public abstract class Entity : ICollidable
 
     protected Model  _model;
     protected Effect _effect;
-
+    
     public Collider Collider { get; protected set; }
 
     public bool IsStatic { get; protected set; }

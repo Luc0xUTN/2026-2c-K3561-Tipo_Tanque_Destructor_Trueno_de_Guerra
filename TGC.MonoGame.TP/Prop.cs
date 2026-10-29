@@ -12,10 +12,12 @@ namespace TGC.MonoGame.TP;
 public class Prop : Entity
 {
     private List<Texture> _textures = new List<Texture>();
+    public BoundingSphere BoundingSphere { get; protected set; }
     
     public Prop(Vector3 position, Vector3 scale, Vector3 rotation) : base(position, scale, rotation)
     {
         IsStatic = true;
+        
     }
 
     public void LoadContent(Model model, Effect effect, List<Texture> texture)

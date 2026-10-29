@@ -137,8 +137,12 @@ public class Forest
 
     }
 
-    public void Draw(GraphicsDevice device, Matrix view, Matrix projection)
+    public void Draw(GraphicsDevice device, Matrix view, Matrix projection, BoundingFrustum boundingFrustum)
     {
-        _props.ForEach(prop => prop.Draw(device, view, projection));
+        _props.ForEach(prop =>
+        {
+            if (boundingFrustum.Intersects(prop.BoundingSphere))
+                prop.Draw(device, view, projection); 
+        });
     }
 }

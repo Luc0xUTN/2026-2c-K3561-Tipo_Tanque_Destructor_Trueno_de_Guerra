@@ -14,9 +14,17 @@ public class Rock : Prop
     public Rock(Vector3 position, Vector3 scale, Vector3 rotation, Color color) : base(position, scale, rotation)
     {
         IsSolid = true;
-        var (vertices, faces) = BoxColliderFactory.CreateBox(halfWidth: 0.5f, height: 1f);
-        Collider = new ConvexCollider(this, vertices, faces);
+
         _color = color; 
+    }
+
+    public void Initialize()
+    {
+        base.Initialize();
+        
+        var (vertices, faces) = BoxColliderFactory.CreateBox(halfWidth: 0.5f, height: 1f);
+        Collider =  new ConvexCollider(this, vertices, faces);
+        BoundingSphere = new BoundingSphere(_position, Collider.BoundingRadius);
     }
     
 

@@ -60,6 +60,9 @@ public class GameScene : Scene
     // todavía, "no somos diseñadores" así que se reusa uno existente a escala chica.
     private Effect _basicEffect;
     private Model _projectileModel;
+
+
+    private BoundingFrustum _boundingFrustum; 
     
     public GameScene(Game game)
     {
@@ -134,7 +137,8 @@ public class GameScene : Scene
         
         _allTanks.Add(_tank);
         _allTanks.AddRange(_enemyTanks);
-        
+
+        _boundingFrustum = new BoundingFrustum(_camera.GetView() * _projection); 
         
         _game.IsMouseVisible = false; 
     }
@@ -266,8 +270,10 @@ public class GameScene : Scene
         _hudView.Update();
 
         Mouse.SetPosition(_centerX,_centerY);
-
+        
         _physicsSystem.Update();
+        
+        _boundingFrustum.Matrix = _camera.GetView() * _projection; 
     }
 
     // La posición/dirección de spawn salen del transform absoluto del bone del
@@ -300,8 +306,10 @@ public class GameScene : Scene
     {
         var view = _camera.GetView();
         
+        
         _tank.Draw(_device, view, _projection);
         
+
         foreach (var enemyTank in _enemyTanks)
         {
             enemyTank.Draw(_device, _camera.GetView(), _projection);
@@ -312,7 +320,7 @@ public class GameScene : Scene
             projectile.Draw(_device, view, _projection);
         }
 
-        _battlefield.Draw(_device, view, _projection);
+        _battlefield.Draw(_device, view, _projection, _boundingFrustum);
         
         if (_physicsSystem is DebugPhysicsSystem)
             ((DebugPhysicsSystem) _physicsSystem).Draw(view, _projection);

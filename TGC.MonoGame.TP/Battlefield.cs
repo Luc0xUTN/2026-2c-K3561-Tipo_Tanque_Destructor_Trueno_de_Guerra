@@ -155,10 +155,10 @@ public class Battlefield
         _forest.Remove(prop);
     }
 
-    public void Draw(GraphicsDevice device, Matrix view, Matrix projection)
+    public void Draw(GraphicsDevice device, Matrix view, Matrix projection, BoundingFrustum boundingFrustum)
     {
         _terrain.Draw(device, view, projection);
-        _forest.Draw(device, view, projection);
+        _forest.Draw(device, view, projection, boundingFrustum);
     }
 
     // Única forma en que el resto del juego (spawn de tanque, más adelante IA)
