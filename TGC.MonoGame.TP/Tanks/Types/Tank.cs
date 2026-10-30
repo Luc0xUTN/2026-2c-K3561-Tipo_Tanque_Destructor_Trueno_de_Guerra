@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using TGC.MonoGame.TP.Cameras;
 using TGC.MonoGame.TP.Collisions;
 using TGC.MonoGame.TP.Tanks;
 using Quaternion = Microsoft.Xna.Framework.Quaternion;
@@ -81,7 +82,12 @@ public class Tank : Entity
     // MaxHealth son ambos int -- sin él, Health/MaxHealth sería división
     // entera (truncada a 0 salvo que Health == MaxHealth).
     public float HealthRatio => (float)Health / MaxHealth;
-
+    
+    private float _kAmbient   = 0.30f;   
+    private float _kDiffuse   = 0.75f;   
+    private float _kSpecular  = 0.25f;   
+    private float _shininess  = 28.0f; 
+    
     public Tank(Vector3 position,Vector3 scale, Vector3 rotation, Battlefield battlefield) : base(position, scale, rotation)
     {
         IsSolid = true;
@@ -284,6 +290,27 @@ public class Tank : Entity
     {
         _rotationDirection = direction;
     }
+
+    public void Draw(GraphicsDevice graphicsDevice, BaseCamera camera, Matrix projection, Light light)
+    {
+        _effect.Parameters["Projection"].SetValue(projection);
+        _effect.Parameters["View"].SetValue(camera.GetView());
+        
+        _effect.Parameters["LightPosition"].SetValue(light.Position);
+        _effect.Parameters["AmbientColor"].SetValue(light.AmbientColor);
+        _effect.Parameters["DiffuseColor"].SetValue(light.DiffuseColor);
+        _effect.Parameters["SpecularColor"].SetValue(light.SpecularColor);
+        
+        _effect.Parameters["KAmbient"].SetValue(_kAmbient);
+        _effect.Parameters["KDiffuse"].SetValue(_kDiffuse);
+        _effect.Parameters["KSpecular"].SetValue(_kSpecular);
+        _effect.Parameters["Shininess"].SetValue(_shininess);
+        
+        _effect.Parameters["CameraPosition"].SetValue(camera.Position);
+        
+        
+        DrawMeshes(graphicsDevice);
+    }
     
     protected override void DrawMeshes(GraphicsDevice graphicsDevice)
     {
@@ -293,7 +320,11 @@ public class Tank : Entity
         _model.CopyAbsoluteBoneTransformsTo(_absoluteWorldsMatrix); 
         foreach (var mesh in _generalMeshes)
         {
-            _effect.Parameters["World"].SetValue(_absoluteWorldsMatrix[mesh.ParentBone.Index] * _world);
+            Matrix meshWorld = _absoluteWorldsMatrix[mesh.ParentBone.Index] * _world; 
+            
+            _effect.Parameters["World"].SetValue(meshWorld);
+            _effect.Parameters["InverseTransposeWorld"].SetValue(Matrix.Transpose(Matrix.Invert(meshWorld)));
+            
             mesh.Draw();
         }
         
@@ -302,15 +333,24 @@ public class Tank : Entity
 
     private void _drawCatterpillars(GraphicsDevice graphicsDevice)
     {
+        
         _effect.Parameters["ModelTexture"].SetValue(_caterpillarTexture);
         
         _effect.Parameters["TexturePositions"].SetValue(new Vector2(0, _leftCaterpillarPosition));
-        _effect.Parameters["World"].SetValue(_absoluteWorldsMatrix[_leftCaterpillarMesh.ParentBone.Index]* _world);
+        
+        Matrix leftCaterpillarWorld = _absoluteWorldsMatrix[_leftCaterpillarMesh.ParentBone.Index] * _world; 
+        _effect.Parameters["World"].SetValue(leftCaterpillarWorld);
+        _effect.Parameters["InverseTransposeWorld"].SetValue(Matrix.Transpose(Matrix.Invert(leftCaterpillarWorld)));
+
         _leftCaterpillarMesh.Draw();
         
         
         _effect.Parameters["TexturePositions"].SetValue(new Vector2(0, _rightCaterpillarPosition));
-        _effect.Parameters["World"].SetValue(_absoluteWorldsMatrix[_rightCaterpillarMesh.ParentBone.Index] * _world);
+        
+        Matrix rightCaterpillarWorld = _absoluteWorldsMatrix[_rightCaterpillarMesh.ParentBone.Index] * _world;
+        _effect.Parameters["World"].SetValue(rightCaterpillarWorld);
+        _effect.Parameters["InverseTransposeWorld"].SetValue(Matrix.Transpose(Matrix.Invert(rightCaterpillarWorld)));
+
         _rightCaterpillarMesh.Draw();
     }
 }

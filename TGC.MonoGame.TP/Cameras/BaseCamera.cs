@@ -7,6 +7,14 @@ namespace TGC.MonoGame.TP.Cameras;
 public abstract class BaseCamera
 {
     private Matrix _view;
+    
+    private Vector3 _position;
+
+    public Vector3 Position
+    {
+        get => _position;
+        set => _position = value;
+    }
 
     /// <summary>
     ///     Dirección de puntería en espacio de mundo. Es la que mueve el mouse y, salvo durante el
@@ -46,6 +54,7 @@ public abstract class BaseCamera
     
     public void SetView(Vector3 position, Vector3 target, Vector3 up)
     {
+        Position = position; 
         _view = Matrix.CreateLookAt(position, target, up);
     }
     

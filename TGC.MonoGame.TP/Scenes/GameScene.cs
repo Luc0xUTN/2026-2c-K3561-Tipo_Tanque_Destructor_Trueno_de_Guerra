@@ -21,6 +21,8 @@ public class GameScene : Scene
     private int _centerY; 
     
     private BaseCamera _camera;
+
+    private Light _sunlight = new Light(); 
     
     private Battlefield _battlefield = null;
     
@@ -85,6 +87,12 @@ public class GameScene : Scene
         _centerX = _device.Viewport.Width / 2;
         _centerY = _device.Viewport.Height / 2;
 
+        _sunlight.AmbientColor = new Vector3(0.35f, 0.42f, 0.55f); 
+        _sunlight.DiffuseColor = new Vector3(1.0f, 0.97f, 0.88f);
+        _sunlight.SpecularColor = new Vector3(1.0f, 1.0f, 0.95f);
+        _sunlight.Position = new Vector3(3500f, 4000f, 2500f);
+         
+        
         if (_battlefield == null)
         {
             _battlefield = new Battlefield(ContentPaths.ContentFolderEffects + "BasicShader",ContentPaths.ContentFolderEffects + "TreeShader", Color.Green);
@@ -307,12 +315,12 @@ public class GameScene : Scene
         var view = _camera.GetView();
         
         
-        _tank.Draw(_device, view, _projection);
+        _tank.Draw(_device, _camera, _projection, _sunlight);
         
 
         foreach (var enemyTank in _enemyTanks)
         {
-            enemyTank.Draw(_device, _camera.GetView(), _projection);
+            enemyTank.Draw(_device, _camera, _projection, _sunlight);
         }
 
         foreach (var projectile in _projectiles)
