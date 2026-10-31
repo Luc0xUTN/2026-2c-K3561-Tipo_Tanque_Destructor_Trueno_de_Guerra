@@ -160,8 +160,6 @@ public class GameScene : Scene
 
         _basicEffect = _contentManager.Load<Effect>(ContentPaths.ContentFolderEffects + "BasicShader");
         Effect modelEffect = _contentManager.Load<Effect>(ContentPaths.ContentFolderEffects + "ModelShader");
-        Effect caterpillarEffect =
-            _contentManager.Load<Effect>(ContentPaths.ContentFolderEffects + "CaterpillarEffect");
         // Cada tanque carga el modelo con su propio ContentManager. Si todos
         // comparten uno (como antes), ContentManager cachea el Model por path y
         // los 4 tanques terminan compartiendo los mismos ModelBone de torreta y
