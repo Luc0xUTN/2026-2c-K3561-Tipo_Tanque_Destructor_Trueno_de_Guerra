@@ -20,7 +20,7 @@ public class GameHudView : View
     private readonly SpriteFont _font;
     private readonly SpriteBatch _spriteBatch;
     private readonly Tank _playerTank;
-    private readonly List<EnemyTank> _enemyTanks;
+    private readonly List<AITank> _enemyTanks;
     private BaseCamera _camera;
     private Matrix _projection;
     
@@ -30,7 +30,7 @@ public class GameHudView : View
     private Texture2D _pixel;
     
     
-    public GameHudView(GraphicsDevice device, SpriteFont font, SpriteBatch spriteBatch, Texture2D pixel, Tank playerTank, List<EnemyTank> enemyTanks, BaseCamera camera, Matrix projection)
+    public GameHudView(GraphicsDevice device, SpriteFont font, SpriteBatch spriteBatch, Texture2D pixel, Tank playerTank, List<AITank> enemyTanks, BaseCamera camera, Matrix projection)
     {
         _device = device;
         _font = font;

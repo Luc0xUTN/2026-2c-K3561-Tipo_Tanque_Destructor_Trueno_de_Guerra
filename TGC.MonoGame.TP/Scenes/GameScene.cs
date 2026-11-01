@@ -29,7 +29,8 @@ public class GameScene : Scene
     // TODO: Esto debe ser pasado a la clase tanque debido a que el tanque debe saber como se mueve su torreta y cañon
     private TurretCanonCameraAimHandler _turretCanonMovementHandler; 
     private Tank _tank;
-    private List<EnemyTank> _enemyTanks;
+    private List<AITank> _enemyTanks;
+    private List<AITank> _allyTanks;
     private List<Projectile> _projectiles;
     private List<Tank> _allTanks = new List<Tank>();
 
@@ -113,19 +114,47 @@ public class GameScene : Scene
         // Enemigos: spawnean cerca del spawn B (el opuesto al jugador), separados
         // entre sí para no superponerse. Radio de separación estimado a ojo contra
         // el ancho del claro de spawn (22u) y el tamaño del tanque.
+        //
+        // Cada uno recibe una lane DISTINTA (índice = posición en el array, 0/1/2 --
+        // coincide 1 a 1 con las 3 lanes que genera Battlefield) en vez de dejar que
+        // cada AI elija "la más cercana a mí" de forma independiente -- spawneando
+        // tan cerca entre sí (10u), dos terminaban eligiendo la MISMA lane y
+        // caminaban casi superpuestos todo el trayecto, chocándose entre ellos.
         var enemySpawnCenter = _battlefield.GetSpawnB();
         float[] enemyOffsetsX = { -10f, 0f, 10f };
-        _enemyTanks = new List<EnemyTank>();
-        foreach (var offsetX in enemyOffsetsX)
+        _enemyTanks = new List<AITank>();
+        for (var laneIndex = 0; laneIndex < enemyOffsetsX.Length; laneIndex++)
         {
-            var enemyX = enemySpawnCenter.X + offsetX;
+            var enemyX = enemySpawnCenter.X + enemyOffsetsX[laneIndex];
             var enemyZ = enemySpawnCenter.Y;
             var enemyHeight = _battlefield.GetHeightAt(enemyX, enemyZ);
 
-            var enemyAI = new AI(_tank, _battlefield);
-            var enemyTank = new EnemyTank(new Vector3(enemyX, enemyHeight, enemyZ), Vector3.One, new Vector3(0, 0, 0), enemyAI, _battlefield);
+            var enemyAI = new AI(_battlefield, laneIndex);
+            var enemyTank = new AITank(new Vector3(enemyX, enemyHeight, enemyZ), Vector3.One, new Vector3(0, 0, 0), enemyAI, _battlefield, Team.Enemy);
             enemyTank.Initialize();
             _enemyTanks.Add(enemyTank);
+        }
+
+        // Aliados: 2, no 3, para combate simétrico (jugador + 2 aliados = 3,
+        // contra los 3 enemigos). Spawnean a los costados del jugador en
+        // spawnA (que ya ocupa el centro) con el mismo patrón de offsets que
+        // los enemigos, y cada uno también recibe una lane fija y distinta
+        // (0 y 1) por la misma razón -- evitar que terminen caminando
+        // superpuestos. Misma AI, mismo Tank -- la única diferencia es el
+        // Team, que define hacia dónde avanza Ruta (AI.DecideRoute).
+        var allySpawnCenter = _battlefield.GetSpawnA();
+        float[] allyOffsetsX = { -10f, 10f };
+        _allyTanks = new List<AITank>();
+        for (var laneIndex = 0; laneIndex < allyOffsetsX.Length; laneIndex++)
+        {
+            var allyX = allySpawnCenter.X + allyOffsetsX[laneIndex];
+            var allyZ = allySpawnCenter.Y;
+            var allyHeight = _battlefield.GetHeightAt(allyX, allyZ);
+
+            var allyAI = new AI(_battlefield, laneIndex);
+            var allyTank = new AITank(new Vector3(allyX, allyHeight, allyZ), Vector3.One, new Vector3(0, 0, 0), allyAI, _battlefield, Team.Allied);
+            allyTank.Initialize();
+            _allyTanks.Add(allyTank);
         }
 
         _projectiles = new List<Projectile>();
@@ -142,9 +171,11 @@ public class GameScene : Scene
 
         _physicsSystem.Add(_tank);
         _enemyTanks.ForEach(t => _physicsSystem.Add(t));
-        
+        _allyTanks.ForEach(t => _physicsSystem.Add(t));
+
         _allTanks.Add(_tank);
         _allTanks.AddRange(_enemyTanks);
+        _allTanks.AddRange(_allyTanks);
 
         _boundingFrustum = new BoundingFrustum(_camera.GetView() * _projection); 
         
@@ -180,12 +211,48 @@ public class GameScene : Scene
         
         _tank.LoadContent(playerModel, playerTexture, caterpillarTexture, modelEffect, turretName, cannonName, leftCaterpillarName, rightCaterpillarName, leftWheelsNames, rightWheelsNames, leftDriveSprocket, rightDriveSprocket);
 
+        // Enemigos: equipo visualmente distinto del jugador/aliados -- T90 en
+        // vez de Panzer. Mismo esqueleto de bones (Turret/Cannon/Treadmill1/
+        // Treadmill2 se llaman igual en el .fbx -- confirmado inspeccionando
+        // el .xnb compilado), pero el T90 tiene menos ruedas (16 contra 20):
+        // 7 por lado + 1 rueda motriz, en vez de 9+1. El reparto izquierda/
+        // derecha de abajo es una inferencia por el mismo patrón que ya usa
+        // el Panzer (no hay forma de confirmarlo sin verlo girar en juego) --
+        // si queda invertido, es un cambio de una línea.
+        const string enemyCaterpillarTextureName = "tanks/T90/textures_mod/treadmills";
+        Texture enemyCaterpillarTexture = _contentManager.Load<Texture>(ContentPaths.ContentFolder3D + enemyCaterpillarTextureName);
+        List<String> enemyLeftWheelsNames = new List<string> { "Wheel1", "Wheel2", "Wheel3", "Wheel4", "Wheel5", "Wheel6", "Wheel7" };
+        List<String> enemyRightWheelsNames = new List<string> { "Wheel9", "Wheel10", "Wheel11", "Wheel12", "Wheel13", "Wheel14", "Wheel15" };
+        string enemyLeftDriveSprocket = "Wheel8";
+        string enemyRightDriveSprocket = "Wheel16";
+
+        // Dos correcciones que el T90 necesita y el Panzer no (ver
+        // Tank.LoadContent): la torreta/cañón del T90 se modelaron rotados
+        // 180° sobre su propio eje respecto del Panzer, Cannon no está
+        // anidado bajo Turret (ambos confirmados inspeccionando los bones de
+        // los dos modelos), y el pivote del modelo no queda en la base como
+        // en el Panzer. 1.9u sale de medir el bounding box REAL (transformado
+        // por los bones, como lo dibuja el juego) de los dos modelos y hacer
+        // que el T90 quede tan hundido respecto de su origen como el Panzer
+        // ya lo está (que funciona bien) -- reemplaza una primera estimación
+        // (0.52u, por proporción nada más) que Dante confirmó insuficiente.
+        const bool enemyNeedsRollCorrection = true;
+        const float enemyGroundOffset = 1.9f;
+
         foreach (var enemyTank in _enemyTanks)
         {
-            Model enemyModel = new ContentManager(_game.Services, _contentManager.RootDirectory).Load<Model>(ContentPaths.ContentFolder3D + "tanks/Panzer/Panzer");
-            Texture enemyTexture =
-                _contentManager.Load<Texture>(ContentPaths.ContentFolder3D + "tanks/Panzer/PzVl_Tiger_I");
-            enemyTank.LoadContent(enemyModel,enemyTexture, caterpillarTexture, modelEffect, turretName, cannonName, leftCaterpillarName, rightCaterpillarName, leftWheelsNames, rightWheelsNames, leftDriveSprocket, rightDriveSprocket);
+            Model enemyModel = new ContentManager(_game.Services, _contentManager.RootDirectory).Load<Model>(ContentPaths.ContentFolder3D + "tanks/T90/T90");
+            Texture enemyTexture = _contentManager.Load<Texture>(ContentPaths.ContentFolder3D + "tanks/T90/textures_mod/hullA");
+            enemyTank.LoadContent(enemyModel, enemyTexture, enemyCaterpillarTexture, modelEffect, turretName, cannonName, leftCaterpillarName, rightCaterpillarName, enemyLeftWheelsNames, enemyRightWheelsNames, enemyLeftDriveSprocket, enemyRightDriveSprocket, enemyNeedsRollCorrection, enemyGroundOffset);
+        }
+
+        // Aliados: mismo aspecto que el jugador (Panzer) -- "mi equipo" se
+        // reconoce de un vistazo frente al T90 del enemigo.
+        foreach (var allyTank in _allyTanks)
+        {
+            Model allyModel = new ContentManager(_game.Services, _contentManager.RootDirectory).Load<Model>(ContentPaths.ContentFolder3D + "tanks/Panzer/Panzer");
+            Texture allyTexture = _contentManager.Load<Texture>(ContentPaths.ContentFolder3D + "tanks/Panzer/PzVl_Tiger_I");
+            allyTank.LoadContent(allyModel, allyTexture, caterpillarTexture, modelEffect, turretName, cannonName, leftCaterpillarName, rightCaterpillarName, leftWheelsNames, rightWheelsNames, leftDriveSprocket, rightDriveSprocket);
         }
 
         _projectileModel = _contentManager.Load<Model>(ContentPaths.ContentFolder3D + "projectiles/Bullet");
@@ -239,13 +306,21 @@ public class GameScene : Scene
 
         foreach (var enemyTank in _enemyTanks)
         {
-            enemyTank.Update(elapsedTime);
+            enemyTank.Update(elapsedTime, _allTanks);
+        }
+        foreach (var allyTank in _allyTanks)
+        {
+            allyTank.Update(elapsedTime, _allTanks);
         }
 
         TrySpawnProjectile(_tank);
         foreach (var enemyTank in _enemyTanks)
         {
             TrySpawnProjectile(enemyTank);
+        }
+        foreach (var allyTank in _allyTanks)
+        {
+            TrySpawnProjectile(allyTank);
         }
 
         
@@ -271,6 +346,14 @@ public class GameScene : Scene
             _explosionSound.Play(GameSettings.SoundEffectsVolumen, 0f, 0f);
         }
         _enemyTanks.RemoveAll(e => e.IsDead);
+
+        foreach (var deadAlly in _allyTanks.FindAll(a => a.IsDead))
+        {
+            _physicsSystem.Remove(deadAlly);
+            _explosionSound.Play(GameSettings.SoundEffectsVolumen, 0f, 0f);
+        }
+        _allyTanks.RemoveAll(a => a.IsDead);
+
         _allTanks.RemoveAll(e => e.IsDead);
 
         _hudView.Update();
@@ -319,6 +402,11 @@ public class GameScene : Scene
         foreach (var enemyTank in _enemyTanks)
         {
             enemyTank.Draw(_device, _camera, _projection, _sunlight);
+        }
+
+        foreach (var allyTank in _allyTanks)
+        {
+            allyTank.Draw(_device, _camera, _projection, _sunlight);
         }
 
         foreach (var projectile in _projectiles)

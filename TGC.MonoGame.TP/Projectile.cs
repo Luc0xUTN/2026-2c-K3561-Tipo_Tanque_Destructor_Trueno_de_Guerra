@@ -140,11 +140,9 @@ public class Projectile : Entity
         return a + ab * t;
     }
 
-    // Único concepto de "equipo" que existe hoy: jugador vs. cualquier enemigo.
-    // Si más adelante hay más de un jugador o facciones, esto tiene que cambiar.
     private static bool SameTeam(Tank a, Tank b)
     {
-        return (a is PlayerTank) == (b is PlayerTank);
+        return a.Team == b.Team;
     }
 
     // Todo lo estático que esté a DestructionRadius del punto de impacto se
