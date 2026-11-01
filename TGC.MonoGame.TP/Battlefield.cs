@@ -120,7 +120,11 @@ public class Battlefield
     }
 
     // C) Consulta usada por Forest para no poner props sobre carriles ni claros.
-    public bool IsNavigable(float x, float z)
+    // obstacleClearanceMargin: se le suma a LaneHalfWidth antes de comparar --
+    // Battlefield no sabe nada de árboles/rocas, es Forest quien decide cuánto
+    // margen pedir según el tamaño real (en su peor caso de escala) del tipo de
+    // prop que esté a punto de colocar.
+    public bool IsNavigable(float x, float z, float obstacleClearanceMargin)
     {
         var point = new Vector2(x, z);
 
@@ -130,7 +134,7 @@ public class Battlefield
 
         foreach (var curve in _laneCurves)
         {
-            if (Lane.DistanceToPolyline(point, curve) <= LaneHalfWidth)
+            if (Lane.DistanceToPolyline(point, curve) <= LaneHalfWidth + obstacleClearanceMargin)
                 return true;
         }
 

@@ -19,13 +19,26 @@ public class Forest
     
     private float _rockProbability = 0.1f;
 
+    // Margen extra (sobre LaneHalfWidth) para que un prop no invada la lane ni
+    // aunque le toque la escala más grande posible -- cubre su propio radio
+    // horizontal en el peor caso + el semiancho del tanque (2u, BoxColliderFactory
+    // en Tank.cs) + una holgura chica por la imprecisión del bang-bang en los
+    // quiebres de la curva. Distintos porque los tamaños reales lo son:
+    // - Árbol: halfWidth=0.5 (Tree.cs) con escala XZ de hasta 2x -> radio
+    //   horizontal máximo ~1.4u. 1.4 + 2 + holgura ~5.
+    // - Roca: la más grande de las 4 (Rock1, ver RockBounds en Rock.cs) mide
+    //   ~4.2u de radio horizontal en espacio local, con escala de hasta 2x ->
+    //   hasta ~8.3u real. 8.3 + 2 + holgura ~12.
+    private const float TreeClearanceMargin = 5f;
+    private const float RockClearanceMargin = 12f;
+
     private int _seed; // guardada para reutilizarla en LoadContent (selección de modelo de roca)
 
     public void Initialize(
         Vector2 mapSize,
         int seed,
         Func<float, float, float> getHeightAt,
-        Func<float, float, bool> isNavigable,
+        Func<float, float, float, bool> isNavigable,
         float spacing = 5f
         )
     {
@@ -55,14 +68,21 @@ public class Forest
                 posX += ((float)random.NextDouble() * 2f - 1f) * maxPositionVariation;
                 posZ += ((float)random.NextDouble() * 2f - 1f) * maxPositionVariation;
 
+                // Roca o árbol se decide ACÁ (antes de chequear navegabilidad, no
+                // después) porque el margen de despeje depende de cuál de los dos
+                // va a terminar yendo en este punto -- una roca necesita mucho más
+                // margen que un árbol (ver TreeClearanceMargin/RockClearanceMargin).
+                bool isRock = random.NextDouble() < _rockProbability;
+                float clearanceMargin = isRock ? RockClearanceMargin : TreeClearanceMargin;
+
                 // Complemento de los carriles: si el punto cae sobre un carril o un
                 // claro, no se pone ningún prop ahí (pipeline A->B->C, ver Battlefield).
-                if (isNavigable(posX, posZ))
+                if (isNavigable(posX, posZ, clearanceMargin))
                     continue;
 
                 float rColor = (float)random.NextDouble();
 
-                if (random.NextDouble() < _rockProbability)
+                if (isRock)
                 {
                     Color color = Color.Lerp(Color.DimGray, Color.DarkGray, rColor);
                     float scaleVariation = (float)random.NextDouble() * 2;
