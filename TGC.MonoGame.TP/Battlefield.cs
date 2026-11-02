@@ -12,10 +12,12 @@ namespace TGC.MonoGame.TP;
 // geométricos, nunca se dibujan) -> C) Forest llena el complemento de los carriles.
 public class Battlefield
 {
-    // Seed madre temporal (mismo patrón que el flag de debug de Terrain).
-    // TODO: en algún momento esto va a ser configurable (menú / seed aleatoria
-    // real por partida) en vez de una constante fija de debug.
-    private const int MasterSeed = 12345;
+    // Seed madre -- distinta en cada partida (ver Initialize). Antes era una
+    // constante fija de debug (12345); quedó así mientras se armaba el resto
+    // del pipeline (terreno/carriles/bosque) para poder comparar resultados
+    // entre corridas. Logueada por consola al generarse para poder reproducir
+    // un mapa puntual si hace falta debuggear algo reportado jugando.
+    private int _masterSeed;
 
     // --- A) Spawns y zona media ---
     private const float SpawnRadius = 126f; // R: distancia del centro del mapa a cada spawn.
@@ -56,13 +58,19 @@ public class Battlefield
 
     public void Initialize(GraphicsDevice device, float mapSize)
     {
-        // Cada módulo deriva su propia seed independiente a partir de la
-        // MasterSeed, en vez de compartir un único stream secuencial: así,
+        // Random (sin seed explícita) usa entropía real del sistema -- una
+        // seed distinta en cada partida, no reproducible salvo que se guarde
+        // (ver el log de abajo).
+        _masterSeed = new Random().Next();
+        Console.WriteLine($"Battlefield: seed de esta partida = {_masterSeed}");
+
+        // Cada módulo deriva su propia seed independiente a partir de
+        // _masterSeed, en vez de compartir un único stream secuencial: así,
         // cambios internos en un módulo no corren silenciosamente los resultados
         // de otro para la misma seed.
-        var terrainSeed = MasterSeed;
-        var forestSeed = unchecked(MasterSeed * -1640531527); // mix multiplicativo tipo Knuth
-        var lanesSeed = unchecked(MasterSeed * 668265263);
+        var terrainSeed = _masterSeed;
+        var forestSeed = unchecked(_masterSeed * -1640531527); // mix multiplicativo tipo Knuth
+        var lanesSeed = unchecked(_masterSeed * 668265263);
 
         _terrain = new Terrain(_shaderRoute, _terrainColor);
         _terrain.Initialize(device, mapSize, terrainSeed);
