@@ -31,6 +31,10 @@ public abstract class Entity : ICollidable
     public Quaternion GetRotation() => _rotation;
     public Matrix GetWorld() => _world;
 
+    // Default para todo lo que no se mueve por sus propios medios (props).
+    // Tank la overridea con su velocidad real.
+    public virtual Vector3 GetVelocity() => Vector3.Zero;
+
     public void SetPosition(Vector3 position)
     {
         _position = position;

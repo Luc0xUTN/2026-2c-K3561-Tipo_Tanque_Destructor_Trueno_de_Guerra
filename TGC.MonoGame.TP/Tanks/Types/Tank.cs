@@ -86,8 +86,14 @@ public class Tank : Entity
     private float _caterpillarTextureScale = 0.25f; 
     
     private float _wheelRadius = 0.5f;
-    
-    private float _yaw; 
+
+    private float _yaw;
+
+    // Velocidad lineal actual (escalar, a lo largo de _world.Forward) -- se
+    // guarda como campo (antes era variable local de Update) para poder
+    // exponerla vía GetVelocity() a CollisionResolver, que la necesita para
+    // el clipping de velocidad en el choque.
+    private float _tankSpeed;
     
     private Matrix[] _absoluteWorldsMatrix;
     
@@ -105,11 +111,19 @@ public class Tank : Entity
     // --- Vida ---
     private const int MaxHealth = 100;
     private const int ProjectileDamage = 10;
-    private const int CollisionDamage = 2;
-    // Sin este cooldown, un tanque trabado contra un obstáculo (issue #11,
-    // todavía sin resolver) perdería 2 de vida CADA FRAME mientras siga
-    // superpuesto -- se moriría en menos de un segundo. Esto no limita el daño
-    // de un impacto de proyectil (eso siempre aplica, ver TakeProjectileDamage).
+    // Cantidad "normal" de daño por choque físico (tanque-tanque, tanque-roca).
+    // Pública porque Prop.TankCollisionDamage la usa como su propio default --
+    // así una roca (que no pisa esa propiedad) da exactamente este daño, sin
+    // duplicar el número en dos lugares. Tree la pisa por una menor (ver
+    // Tree.cs) -- a propósito, para no castigar tanto abrirse camino por el
+    // bosque en vez de ir por los senderos (a Dante le importa que SIGA
+    // doliendo algo, para que no sea un atajo gratis, pero menos que chocar
+    // contra algo sólido de verdad).
+    public const int DefaultCollisionDamage = 2;
+    // Sin el cooldown de abajo, un tanque trabado contra un obstáculo
+    // perdería vida CADA FRAME mientras siga superpuesto -- se moriría en
+    // menos de un segundo. Esto no limita el daño de un impacto de proyectil
+    // (eso siempre aplica, ver TakeProjectileDamage).
     private const float CollisionDamageCooldownSeconds = 0.5f;
     private float _collisionDamageCooldownTimer;
 
@@ -152,13 +166,56 @@ public class Tank : Entity
     }
 
     // Choque físico contra otro tanque/prop -- gateado por cooldown (ver comentario
-    // de CollisionDamageCooldownSeconds). La llama PhysicsSystem.CheckPair.
-    public void TakeCollisionDamage()
+    // de CollisionDamageCooldownSeconds). La llama PhysicsSystem.CheckPair, que
+    // decide CUÁNTO (DefaultCollisionDamage contra algo sólido, o lo que pise
+    // Prop.TankCollisionDamage contra un prop destructible como Tree).
+    public void TakeCollisionDamage(int amount)
     {
         if (_collisionDamageCooldownTimer > 0f) return;
 
-        Health = Math.Max(0, Health - CollisionDamage);
+        Health = Math.Max(0, Health - amount);
         _collisionDamageCooldownTimer = CollisionDamageCooldownSeconds;
+    }
+
+    // Espacio de mundo -- la usa CollisionResolver para el clipping de
+    // velocidad (cancelar, al chocar, solo la componente que entra al otro
+    // objeto). _tankSpeed es escalar (a lo largo de _world.Forward); ver su
+    // comentario de declaración.
+    public override Vector3 GetVelocity() => _world.Forward * _tankSpeed;
+
+    // La llama CollisionResolver/PhysicsSystem tras resolver un choque, para
+    // dejar las dos orugas acordes a la velocidad ya corregida (clip contra
+    // sólidos, o frenado parcial contra un prop destructible) -- sin esto,
+    // _leftCaterpillarSpeed/_rightCaterpillarSpeed seguirían con el valor
+    // acumulado de antes del choque y el tanque volvería a empujar contra el
+    // obstáculo en el frame siguiente (issue #11: por eso quedaba trabado
+    // perdiendo vida para siempre -- CollisionResolver corregía _position
+    // pero nunca esto). scale=1 no cambia nada; scale=0 frena en seco.
+    //
+    // Frenar la velocidad por sí solo no alcanzaba (confirmado con otra
+    // simulación aparte): si algo sigue pidiendo "avanzar" en el mismo
+    // sentido frame tras frame (la IA en Ruta hacia un waypoint bloqueado),
+    // la velocidad se vuelve a reconstruir de a poquito y el tanque queda
+    // tocando el obstáculo sin avanzar de verdad -- igual que antes, solo que
+    // más despacio. BlockedSpeedScaleThreshold marca cuándo ese frenado fue
+    // lo bastante fuerte como para considerar que el tanque está realmente
+    // bloqueado (no un rocecito de costado, que casi no frena) -- IsBlocked
+    // es lo que AI.Decide usa para dejar de insistir con el mismo rumbo. El
+    // multiplicador fijo de Tree (0.85, ver Tree.cs) queda siempre por
+    // encima del umbral a propósito: pasar por el bosque no cuenta como
+    // "bloqueado".
+    private const float BlockedSpeedScaleThreshold = 0.5f;
+    public bool IsBlocked { get; private set; }
+
+    public void ApplyCollisionSpeedScale(float scale)
+    {
+        _leftCaterpillarSpeed *= scale;
+        _rightCaterpillarSpeed *= scale;
+
+        if (scale < BlockedSpeedScaleThreshold)
+        {
+            IsBlocked = true;
+        }
     }
 
     // correctTurretCannonRoll180/visualGroundOffset: corrigen diferencias de
@@ -235,6 +292,10 @@ public class Tank : Entity
             }
         }
 
+        // Sin condicionar a correctTurretCannonRoll180 -- GetCanonFiringDirection
+        // lo necesita para CUALQUIER modelo (Panzer incluido), no solo T90.
+        _cannonMesh = _model.Meshes.FirstOrDefault(m => m.Name == canonBoneName);
+
         // T90: Cannon NO es hijo de Turret en la jerarquía real del modelo
         // (confirmado inspeccionando los bones -- en el Panzer sí lo es), así
         // que al yawear la torreta el caño no la sigue. No se puede reparentar
@@ -243,7 +304,6 @@ public class Tank : Entity
         if (correctTurretCannonRoll180)
         {
             _compensateCannonYaw = true;
-            _cannonMesh = _model.Meshes.FirstOrDefault(m => m.Name == canonBoneName);
             _cannonRelativeToTurret = _cannonOriginalLocal * Matrix.Invert(turretOriginalLocal);
             _turretMesh = _model.Meshes.FirstOrDefault(m => m.Name == turretBoneName);
         }
@@ -259,11 +319,16 @@ public class Tank : Entity
         }
         
         _rightCaterpillarMesh = _model.Meshes.FirstOrDefault(m => m.Name == rightCaterpillarName);
-        
+
         foreach (var meshPart in _rightCaterpillarMesh.MeshParts)
         {
-            meshPart.Effect = _effect; 
+            meshPart.Effect = _effect;
         }
+
+        // Al final de todo -- Turret/Canon recién construidos, ángulo
+        // dinámico en 0 (todavía no corrió ningún Update real), así que esto
+        // es el reposo real del modelo. Ver CalibrateFiringDirection.
+        CalibrateFiringDirection();
     }
 
     public Turret GetTurret()
@@ -287,6 +352,14 @@ public class Tank : Entity
 
     public virtual void Update(float elapsedTime)
     {
+        // Se resetea ACÁ (antes de que la física de este frame pueda volver a
+        // marcarlo) y no en PhysicsSystem -- así, si este frame no hay ningún
+        // choque fuerte, el próximo AI.Decide (que corre ANTES que este
+        // Update, ver AITank.Update) ya lo lee en false. Si sí lo hay,
+        // ApplyCollisionSpeedScale lo vuelve a poner en true más tarde en
+        // este mismo frame, a tiempo para el AI.Decide del frame siguiente.
+        IsBlocked = false;
+
         _collisionDamageCooldownTimer -= elapsedTime;
 
         _leftCaterpillarSpeed += _speedingDirection * _acceleration * elapsedTime;
@@ -301,12 +374,12 @@ public class Tank : Entity
         _rightCaterpillarSpeed /= (1.0f + _dumping * elapsedTime);
         
         float angularSpeed = (_leftCaterpillarSpeed -  _rightCaterpillarSpeed) / _caterpillarDistance ;
-        float tankSpeed = (_leftCaterpillarSpeed + _rightCaterpillarSpeed) / 2;
-        
+        _tankSpeed = (_leftCaterpillarSpeed + _rightCaterpillarSpeed) / 2;
+
         float difAngle = angularSpeed * elapsedTime;
-        _yaw += difAngle; 
-        
-        _position += _world.Forward * tankSpeed * elapsedTime;
+        _yaw += difAngle;
+
+        _position += _world.Forward * _tankSpeed * elapsedTime;
 
         _leftCaterpillarPosition += _leftCaterpillarSpeed * _caterpillarTextureScale * elapsedTime;
         _rightCaterpillarPosition += _rightCaterpillarSpeed * _caterpillarTextureScale * elapsedTime;
@@ -337,6 +410,78 @@ public class Tank : Entity
     {
         _model.CopyAbsoluteBoneTransformsTo(_absoluteWorldsMatrix);
         return GetCannonAbsolute() * GetVisualWorld();
+    }
+
+    // Dirección real de disparo -- NO se calcula leyendo .Forward del
+    // transform de arriba. Para el T90, esa matriz combinada (yaw+pitch,
+    // ver GetCannonAbsolute) termina con escala NO uniforme (confirmado:
+    // .Forward sale con longitud ~100 en vez de 1) -- la malla se sigue
+    // dibujando bien porque DrawMeshes transforma cada VÉRTICE real con esa
+    // matriz (siempre da la posición correcta, tenga o no escala rara), pero
+    // ".Forward" es un atajo que lee una sola fila de la matriz asumiendo
+    // que es una rotación limpia -- con escala no uniforme esa lectura deja
+    // de representar una dirección real, aunque la malla se vea perfecta.
+    //
+    // Por eso acá se transforman DOS PUNTOS reales de la propia malla del
+    // caño (su origen y el borde de su propia BoundingSphere, calculada por
+    // el pipeline de contenido a partir de los vértices reales) con la
+    // MISMA matriz que ya usa el dibujo -- transformar puntos siempre da la
+    // posición correcta sin importar la escala de la matriz, a diferencia
+    // de leer una fila suelta. Funciona igual para Panzer (sin este
+    // problema) que para T90.
+    public Vector3 GetCanonFiringDirection()
+    {
+        _model.CopyAbsoluteBoneTransformsTo(_absoluteWorldsMatrix);
+        var combined = GetCannonAbsolute() * GetVisualWorld();
+
+        var breech = Vector3.Transform(Vector3.Zero, combined);
+        var muzzle = Vector3.Transform(_calibratedLocalMuzzle, combined);
+
+        var direction = muzzle - breech;
+        direction.Normalize();
+        return direction;
+    }
+
+    // Punto "muzzle" en espacio LOCAL del bone del cañón -- calibrado una
+    // sola vez (ver CalibrateFiringDirection, llamado al final de
+    // LoadContent) en vez de adivinado con la BoundingSphere de la malla.
+    // Una primera versión usaba directamente el centro de la BoundingSphere
+    // como punto de referencia -- medido contra el Panzer (el único modelo
+    // donde hay una referencia 100% confiable para comparar, -Forward, que
+    // nunca tuvo el problema de escala del T90), daba un error FIJO de
+    // 8.28° en los 20 ángulos de yaw/pitch probados -- ni uno más ni uno
+    // menos, siempre igual, lo que confirma que no es ruido: la malla del
+    // caño no es simétrica alrededor de su propio eje de disparo (la culata
+    // pesa más que el tubo), así que el centro de su esfera envolvente
+    // queda corrido del eje real.
+    private Vector3 _calibratedLocalMuzzle;
+
+    // Encuentra, en espacio LOCAL del cañón, el punto que -- al pasar por
+    // la transformación completa de HOY (GetCannonAbsolute * GetVisualWorld)
+    // -- da la dirección de referencia correcta. Se llama en reposo real
+    // (ángulo dinámico de Turret/Canon en 0, antes de la primera llamada a
+    // su Update) para que la referencia sea inequívoca: en reposo, el caño
+    // tiene que apuntar hacia donde mira el CASCO -- eso vale para
+    // CUALQUIER modelo (no hace falta un -Forward confiable, que es
+    // justamente lo que falla en el T90), así que la misma calibración
+    // sirve para los dos sin casos especiales por modelo.
+    private void CalibrateFiringDirection()
+    {
+        _model.CopyAbsoluteBoneTransformsTo(_absoluteWorldsMatrix);
+        var combinedAtRest = GetCannonAbsolute() * GetVisualWorld();
+
+        var breech = Vector3.Transform(Vector3.Zero, combinedAtRest);
+
+        // Misma convención invertida que ya usa el resto del proyecto
+        // (Move(-1) es "avanzar" -- el modelo queda mirando al revés de
+        // _world.Forward, ver comentario histórico de TrySpawnProjectile).
+        var reference = -_world.Forward;
+        reference.Normalize();
+
+        var distance = MathF.Max(_cannonMesh.BoundingSphere.Radius, 0.1f);
+        var referenceWorldPoint = breech + reference * distance;
+
+        _calibratedLocalMuzzle = Vector3.Transform(referenceWorldPoint, Matrix.Invert(combinedAtRest));
     }
 
     // _world corregido con el offset vertical puramente visual (ver
@@ -383,6 +528,7 @@ public class Tank : Entity
 
         return pitchCorrectionLocal * _cannonRelativeToTurret * GetTurretAbsolute();
     }
+
 
     // El padre REAL de Turret/Cannon en el T90 no es Hull/RootNode sino un
     // nodo "Empty" con su propia rotación D (confirmado inspeccionando ese

@@ -21,54 +21,69 @@ public class GameHudView : View
     private readonly SpriteBatch _spriteBatch;
     private readonly Tank _playerTank;
     private readonly List<AITank> _enemyTanks;
+    private readonly List<AITank> _allyTanks;
     private BaseCamera _camera;
     private Matrix _projection;
-    
+
     private int _initialEnemyCount;
+    private int _initialAllyCount;
     private HealthBar _healthBar;
     private Label _enemyCountLabel;
+    private Label _allyCountLabel;
     private Texture2D _pixel;
-    
-    
-    public GameHudView(GraphicsDevice device, SpriteFont font, SpriteBatch spriteBatch, Texture2D pixel, Tank playerTank, List<AITank> enemyTanks, BaseCamera camera, Matrix projection)
+
+
+    public GameHudView(GraphicsDevice device, SpriteFont font, SpriteBatch spriteBatch, Texture2D pixel, Tank playerTank, List<AITank> enemyTanks, List<AITank> allyTanks, BaseCamera camera, Matrix projection)
     {
         _device = device;
         _font = font;
         _spriteBatch = spriteBatch;
         _playerTank = playerTank;
         _enemyTanks = enemyTanks;
+        _allyTanks = allyTanks;
         _camera = camera;
         _projection = projection;
         _pixel = pixel;
-        
+
         var barPosition = new Vector2(Margin, _device.Viewport.Height - Margin - BarHeight);
         _healthBar = new HealthBar(pixel, barPosition, BarWidth, BarHeight);
 
-        var labelPosition = new Vector2(Margin, barPosition.Y - 50);
+        // Apilados hacia arriba desde la barra de vida, separados por el alto
+        // real de una línea de este font (_font.LineSpacing) más un margen --
+        // un número fijo (30) quedaba más chico que el texto renderizado y
+        // las dos etiquetas se superponían.
+        var lineHeight = _font.LineSpacing + 6;
+        var labelPosition = new Vector2(Margin, barPosition.Y - lineHeight);
         _enemyCountLabel = new Label(_font, "", labelPosition);
-        
+
+        var allyLabelPosition = new Vector2(Margin, labelPosition.Y - lineHeight);
+        _allyCountLabel = new Label(_font, "", allyLabelPosition);
+
     }
 
     public void Initialize()
     {
         _initialEnemyCount = _enemyTanks.Count;
+        _initialAllyCount = _allyTanks.Count;
     }
 
     public void Update()
     {
         _healthBar.Ratio = _playerTank.HealthRatio;
         _enemyCountLabel.Text = $"Enemigos: {_enemyTanks.Count}/{_initialEnemyCount}";
+        _allyCountLabel.Text = $"Aliados: {_allyTanks.Count}/{_initialAllyCount}";
     }
 
     public void Draw()
     {
         _spriteBatch.Begin();
-        
+
         _healthBar.Draw(_spriteBatch);
         _enemyCountLabel.Draw(_spriteBatch);
-        
+        _allyCountLabel.Draw(_spriteBatch);
+
         this.DrawReticle();
-        
+
         _spriteBatch.End();
     }
     

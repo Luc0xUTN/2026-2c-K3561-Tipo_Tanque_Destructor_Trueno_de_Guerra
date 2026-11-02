@@ -13,6 +13,23 @@ public class Tree : Prop
 
     }
 
+    // A diferencia de una roca, un árbol se aplasta: no empuja al tanque de
+    // vuelta (sin corrección de posición, ver PhysicsSystem.CheckPair), solo
+    // lo frena un poco y desaparece. 0.85f es a ojo (quita 15% de la
+    // velocidad por árbol cruzado) -- como el frenado es MULTIPLICATIVO,
+    // cruzar varios seguidos (campo traviesa, fuera de los senderos) compone
+    // y termina siendo notoriamente más lento que ir por un carril limpio,
+    // sin necesidad de ningún sistema aparte que sepa "esto es bosque".
+    // Ajustar jugando si se siente muy brusco o muy gratis.
+    public override bool DestroyedOnTankCollision => true;
+    public override float TankCollisionSpeedMultiplier => 0.85f;
+
+    // Menor que el choque contra algo sólido (Tank.DefaultCollisionDamage) a
+    // propósito: a Dante le importa que abrirse camino por el bosque en vez
+    // de los senderos siga doliendo un poco (si no, es un atajo gratis), pero
+    // bastante menos que chocar contra una roca u otro tanque.
+    public override int TankCollisionDamage => 1;
+
     public override void Initialize()
     {
         base.Initialize();

@@ -115,21 +115,25 @@ public class GameScene : Scene
         // entre sí para no superponerse. Radio de separación estimado a ojo contra
         // el ancho del claro de spawn (22u) y el tamaño del tanque.
         //
-        // Cada uno recibe una lane DISTINTA (índice = posición en el array, 0/1/2 --
-        // coincide 1 a 1 con las 3 lanes que genera Battlefield) en vez de dejar que
-        // cada AI elija "la más cercana a mí" de forma independiente -- spawneando
-        // tan cerca entre sí (10u), dos terminaban eligiendo la MISMA lane y
-        // caminaban casi superpuestos todo el trayecto, chocándose entre ellos.
+        // 6 enemigos contra 3 aliados (jugador + 2) -- caso límite a
+        // propósito (ver memoria del proyecto: simulado SOLO IA vs IA,
+        // 5v3 ya daba 100% a favor del enemigo -- 6v3 es todavía más duro;
+        // un jugador humano no es directamente comparable a la IA de los
+        // aliados, así que esto hay que probarlo jugando, no asumir que la
+        // simulación predice la dificultad real). Solo hay 3 lanes físicas,
+        // así que se duplica cada una por igual (2 tanques por lane) en vez
+        // de seguir cargando sólo los flancos como en la versión de 5.
         var enemySpawnCenter = _battlefield.GetSpawnB();
-        float[] enemyOffsetsX = { -10f, 0f, 10f };
+        float[] enemyOffsetsX = { -25f, -15f, -5f, 5f, 15f, 25f };
+        int[] enemyLaneIndices = { 0, 1, 2, 0, 1, 2 };
         _enemyTanks = new List<AITank>();
-        for (var laneIndex = 0; laneIndex < enemyOffsetsX.Length; laneIndex++)
+        for (var i = 0; i < enemyOffsetsX.Length; i++)
         {
-            var enemyX = enemySpawnCenter.X + enemyOffsetsX[laneIndex];
+            var enemyX = enemySpawnCenter.X + enemyOffsetsX[i];
             var enemyZ = enemySpawnCenter.Y;
             var enemyHeight = _battlefield.GetHeightAt(enemyX, enemyZ);
 
-            var enemyAI = new AI(_battlefield, laneIndex);
+            var enemyAI = new AI(_battlefield, enemyLaneIndices[i]);
             var enemyTank = new AITank(new Vector3(enemyX, enemyHeight, enemyZ), Vector3.One, new Vector3(0, 0, 0), enemyAI, _battlefield, Team.Enemy);
             enemyTank.Initialize();
             _enemyTanks.Add(enemyTank);
@@ -230,12 +234,15 @@ public class GameScene : Scene
         // Tank.LoadContent): la torreta/cañón del T90 se modelaron rotados
         // 180° sobre su propio eje respecto del Panzer, Cannon no está
         // anidado bajo Turret (ambos confirmados inspeccionando los bones de
-        // los dos modelos), y el pivote del modelo no queda en la base como
-        // en el Panzer. 1.9u sale de medir el bounding box REAL (transformado
-        // por los bones, como lo dibuja el juego) de los dos modelos y hacer
-        // que el T90 quede tan hundido respecto de su origen como el Panzer
-        // ya lo está (que funciona bien) -- reemplaza una primera estimación
-        // (0.52u, por proporción nada más) que Dante confirmó insuficiente.
+        // los dos modelos).
+        //
+        // enemyGroundOffset = 1.9f -- NO TOCAR sin volver a renderizar y
+        // comparar contra el Panzer primero (2026-11-02: un intento de
+        // "recalibrar" esto con vértices/BoundingSphere dio 0.04, que
+        // ENTERRABA al tanque -- se revirtió apenas se renderizó de verdad.
+        // El 1.9 original, comparado en un render contra el Panzer parado
+        // sobre un piso real, es el que queda bien plantado -- ni flota ni
+        // se hunde. Ver memoria del proyecto para el detalle completo).
         const bool enemyNeedsRollCorrection = true;
         const float enemyGroundOffset = 1.9f;
 
@@ -264,7 +271,7 @@ public class GameScene : Scene
 
         // Reusa la misma fuente del menú -- no hay una fuente propia del HUD todavía.
         _hudFont = _contentManager.Load<SpriteFont>(ContentPaths.ContentFolderSpriteFonts + "Menu");
-        _hudView = new GameHudView(_device, _hudFont, _spriteBatch, _pixel, _tank, _enemyTanks, _camera, _projection);
+        _hudView = new GameHudView(_device, _hudFont, _spriteBatch, _pixel, _tank, _enemyTanks, _allyTanks, _camera, _projection);
         _hudView.Initialize();
 
         _shootSound = _contentManager.Load<SoundEffect>(ContentPaths.ContentFolderSounds + "Shoot");
@@ -361,7 +368,17 @@ public class GameScene : Scene
         Mouse.SetPosition(_centerX,_centerY);
         
         _physicsSystem.Update();
-        
+
+        // Árboles aplastados por un tanque este frame (ver PhysicsSystem.
+        // TryHandleDestructibleProp) -- mismo circuito que los destruidos por
+        // proyectil arriba: PhysicsSystem solo reporta, acá es donde
+        // efectivamente se sacan de Forest y de las colisiones.
+        foreach (var destroyedProp in _physicsSystem.DestroyedProps)
+        {
+            _physicsSystem.Remove(destroyedProp);
+            _battlefield.RemoveProp(destroyedProp);
+        }
+
         _boundingFrustum.Matrix = _camera.GetView() * _projection; 
     }
 
@@ -375,14 +392,19 @@ public class GameScene : Scene
         
         const float muzzleSpeed = 400f;
 
-        var canonTransform = tank.GetCanonWorldTransform();
-        var spawnPosition = canonTransform.Translation;
-        // Negado: mismo problema de convención que Move(-1) en PlayerTank -- el
-        // modelo tiene el eje "Forward" invertido respecto de hacia dónde apunta
-        // visualmente el cañón (verificado con el log de spawn: con el signo
-        // original, los disparos salían hacia atrás del tanque).
-        var direction = -canonTransform.Forward;
-        direction.Normalize();
+        var spawnPosition = tank.GetCanonWorldTransform().Translation;
+        // NO se lee de .Forward de la matriz del cañón -- para el T90, esa
+        // matriz combinada (yaw+pitch) termina con escala NO uniforme
+        // (confirmado jugando: "las IA enemigas... siempre le erran e
+        // impacta en el suelo" -- el disparo salía casi derecho hacia arriba
+        // aunque el caño se DIBUJABA bien, porque dibujar transforma los
+        // vértices reales de la malla -- siempre correcto -- mientras que
+        // ".Forward" lee una sola fila de la matriz asumiendo que es una
+        // rotación limpia, lo que deja de valer con escala no uniforme).
+        // GetCanonFiringDirection calcula la dirección transformando dos
+        // puntos reales de la malla del cañón en vez de leer esa fila -- ver
+        // su comentario en Tank.cs para el detalle completo.
+        var direction = tank.GetCanonFiringDirection();
 
         var projectile = new Projectile(spawnPosition, direction * muzzleSpeed, tank, Color.Yellow);
         projectile.Initialize();

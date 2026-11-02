@@ -17,8 +17,24 @@ public class Prop : Entity
     public Prop(Vector3 position, Vector3 scale, Vector3 rotation) : base(position, scale, rotation)
     {
         IsStatic = true;
-        
+
     }
+
+    // Comportamiento al chocar con un tanque -- default = sólido de verdad
+    // (como ya se comportaban todos los props, Rock incluida: no se destruye,
+    // frena al tanque en seco contra la normal del choque, daño "normal").
+    // Tree pisa los tres para comportarse distinto (ver Tree.cs). Vive acá y
+    // no como chequeos de tipo en PhysicsSystem/CollisionResolver porque es
+    // el prop quien sabe qué le pasa a él mismo al ser chocado -- esos dos
+    // solo necesitan preguntar, no necesitan conocer cada tipo concreto.
+    public virtual bool DestroyedOnTankCollision => false;
+
+    // Solo tiene efecto cuando DestroyedOnTankCollision es true -- un prop
+    // sólido (Rock) se resuelve con el clipping de velocidad normal
+    // (CollisionResolver), no con un multiplicador fijo.
+    public virtual float TankCollisionSpeedMultiplier => 1f;
+
+    public virtual int TankCollisionDamage => Tank.DefaultCollisionDamage;
 
     public void LoadContent(Model model, Effect effect, List<Texture> texture)
     {

@@ -84,6 +84,26 @@ public class AI
 
     private static readonly TankIntention NoTargetIntention = new(0, 0, false, 0f, 0f);
 
+    // --- Recuperación de bloqueo (issue #11) ---
+    // Tank.IsBlocked avisa que el choque de este frame le frenó la mayor
+    // parte de la velocidad (ver Tank.ApplyCollisionSpeedScale) -- sin
+    // reaccionar a eso, una IA en Ruta hacia un waypoint detrás de un
+    // obstáculo mal despejado insiste con el mismo rumbo para siempre
+    // (confirmado con una simulación aparte: el clipping de velocidad por sí
+    // solo no alcanza si nada deja de pedir "avanzar"). Reacción deliberadamente
+    // simple (no es esquiva ni pathfinding, es la versión más chica que corta
+    // el ciclo -- a revisar si no alcanza, decisión de Dante 2026-11-02):
+    // retrocede un rato fijo, gira un rato fijo (para no quedar reintentando
+    // el mismo punto exacto), y recién ahí vuelve a la lógica normal. Mientras
+    // dura, tiene prioridad sobre CUALQUIER otra cosa (Ruta o Combate) y no
+    // apunta/dispara -- simplificación a propósito, ver comentario de
+    // ContinueRecovery.
+    private const float BlockedReverseDurationSeconds = 0.75f;
+    private const float BlockedRotateDurationSeconds = 0.5f;
+    private enum RecoveryPhase { None, Reversing, Rotating }
+    private RecoveryPhase _recoveryPhase = RecoveryPhase.None;
+    private float _recoveryTimer;
+
     private readonly Battlefield _battlefield;
     private readonly int? _preferredLaneIndex;
 
@@ -117,6 +137,25 @@ public class AI
     // Projectile.Update) -- de ahí se filtra, cada tick, quién es hostil a self.
     public TankIntention Decide(Tank self, float elapsedTime, IReadOnlyList<Tank> tanks)
     {
+        // Prioridad sobre todo lo demás -- ver comentario de los campos de
+        // recuperación arriba.
+        if (_recoveryPhase != RecoveryPhase.None)
+        {
+            var ongoingRecovery = ContinueRecovery(elapsedTime);
+            if (ongoingRecovery.HasValue)
+            {
+                return ongoingRecovery.Value;
+            }
+            // null: la recuperación terminó justo este tick -- sigue de largo
+            // a la lógica normal de abajo en vez de perder el tick.
+        }
+        else if (self.IsBlocked)
+        {
+            _recoveryPhase = RecoveryPhase.Reversing;
+            _recoveryTimer = BlockedReverseDurationSeconds;
+            return new TankIntention(0, 1, false, 0f, 0f); // moveDirection=1: retroceder (misma convención que DecideMovement).
+        }
+
         var selfPosition3D = self.GetPosition();
         var selfPosition = new Vector2(selfPosition3D.X, selfPosition3D.Z);
 
@@ -168,6 +207,35 @@ public class AI
         var shouldFire = DecideFire(selfPosition, targetPosition, elapsedTime, canHitTarget);
 
         return new TankIntention(rotateDirection, moveDirection, shouldFire, turretYaw, aimPitch);
+    }
+
+    // Avanza la recuperación de bloqueo un tick. Devuelve la intención a usar
+    // mientras sigue en curso, o null el tick en que recién termina (para que
+    // Decide caiga a la lógica normal en el MISMO tick, en vez de perder uno
+    // quieto). No apunta ni dispara mientras dura -- simplificación a
+    // propósito: es una reacción mecánica corta (menos de 1.5s en total), no
+    // vale la pena todavía recalcular puntería real durante ella.
+    private TankIntention? ContinueRecovery(float elapsedTime)
+    {
+        _recoveryTimer -= elapsedTime;
+
+        if (_recoveryPhase == RecoveryPhase.Reversing)
+        {
+            if (_recoveryTimer <= 0f)
+            {
+                _recoveryPhase = RecoveryPhase.Rotating;
+                _recoveryTimer = BlockedRotateDurationSeconds;
+            }
+            return new TankIntention(0, 1, false, 0f, 0f); // retrocede.
+        }
+
+        // Rotating.
+        if (_recoveryTimer <= 0f)
+        {
+            _recoveryPhase = RecoveryPhase.None;
+            return null;
+        }
+        return new TankIntention(1, 0, false, 0f, 0f); // gira sobre el lugar, sentido fijo -- no hace falta variar, alcanza con no reintentar derecho al mismo punto.
     }
 
     // Utility AI: entre los hostiles vivos DENTRO de maxDistance, el de mayor
