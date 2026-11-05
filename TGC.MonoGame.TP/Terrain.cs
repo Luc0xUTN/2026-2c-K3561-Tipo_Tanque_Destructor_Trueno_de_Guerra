@@ -1,10 +1,14 @@
 using System;
 using System.IO;
+using System.Numerics;
 using System.Runtime;
+using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using TGC.MonoGame.TP.Cameras;
+using Vector2 = Microsoft.Xna.Framework.Vector2;
+using Vector3 = Microsoft.Xna.Framework.Vector3;
 
 namespace TGC.MonoGame.TP;
 
@@ -351,7 +355,16 @@ public class Terrain
         var x0 = (int)MathF.Floor(gx);
         var z0 = (int)MathF.Floor(gz);
         
-        return _normals[x0, z0];
+        var x1 =  Math.Clamp(x0 + 1, 0, GridResolution - 1);
+        var z1 = Math.Clamp(z0 + 1, 0, GridResolution - 1);
+
+        var ix = gx - x0; 
+        var iz = gz - z0;
+        
+        Vector3 superior = Vector3.Normalize(Vector3.Lerp(_normals[x0, z1], _normals[x1, z1], ix));   
+        Vector3 inferior = Vector3.Normalize(Vector3.Lerp(_normals[x0, z0], _normals[x1, z0], ix)); 
+        
+        return Vector3.Normalize(Vector3.Lerp(inferior, superior, iz));
     }
     
     
