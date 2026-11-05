@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
@@ -51,6 +52,7 @@ public class Terrain
 
     private float _size;
     private float[,] _heights; // copia en CPU, aparte de la GPU, para poder consultar altura (GetHeightAt).
+    private Vector3[,] _normals; 
 
     private int[] _permutation; // tamaño PermutationSize, sin duplicar: se enmascara en los tres puntos del hash, no hace falta.
     private Vector2[] _gradients; // PermutationSize direcciones unitarias equiespaciadas, sin sesgo de módulo.
@@ -178,14 +180,37 @@ public class Terrain
         return sum / norm; // rango aproximado [-1, 1]
     }
 
+    private Vector3 _getNormalFromHeightMap(int xIndex, int zIndex)
+    {
+        var step = _size / (GridResolution - 1);
+        
+        int x0 = Math.Clamp(xIndex - 1, 0, GridResolution - 1);
+        int z0 = Math.Clamp(zIndex - 1, 0, GridResolution - 1);
+        int x1 = Math.Clamp(xIndex + 1, 0, GridResolution - 1);
+        int z1 = Math.Clamp(zIndex + 1, 0, GridResolution - 1);
+
+        float distHorizontalX = (x1 - x0) * step;
+        float distHorizontalZ = (z1 - z0) * step;
+
+        Vector3 vecX = new Vector3(distHorizontalX, _heights[x1, zIndex] - _heights[x0, zIndex], 0);
+        Vector3 vecZ = new Vector3(0, _heights[xIndex, z1] - _heights[xIndex, z0], distHorizontalZ);
+
+        Vector3 normal = Vector3.Normalize(Vector3.Cross(vecZ, vecX));
+        
+        return normal;
+    }
+    
     private void BuildHeightmap(GraphicsDevice device)
     {
         _heights = new float[GridResolution, GridResolution];
-
-        var vertices = new VertexPosition[GridResolution * GridResolution];
+        _normals = new Vector3[GridResolution, GridResolution]; 
+        
+        var vertices = new VertexPositionColorNormal[GridResolution * GridResolution];
         var half = _size / 2f;
         var step = _size / (GridResolution - 1);
 
+        Vector3 normal; 
+        
         for (var zIndex = 0; zIndex < GridResolution; zIndex++)
         {
             for (var xIndex = 0; xIndex < GridResolution; xIndex++)
@@ -196,21 +221,20 @@ public class Terrain
                 var height = FractalNoise(worldX, worldZ) * (HeightRange / 2f);
 
                 _heights[xIndex, zIndex] = height;
-                vertices[zIndex * GridResolution + xIndex] = new VertexPosition(new Vector3(worldX, height, worldZ));
             }
         }
-
-        _vertices = new VertexBuffer(device, VertexPosition.VertexDeclaration, vertices.Length, BufferUsage.WriteOnly);
-        _vertices.SetData(vertices);
 
         // Dos triángulos por celda, mismo esquema que la Unidad 7 (pág. 9):
         // primero {Xi,Zi} {Xi,Zi+1} {Xi+1,Zi+1}, segundo {Xi,Zi} {Xi+1,Zi} {Xi+1,Zi+1}.
         var indices = new ushort[(GridResolution - 1) * (GridResolution - 1) * 6];
         var idx = 0;
-        for (var zIndex = 0; zIndex < GridResolution - 1; zIndex++)
+        for (int zIndex = 0; zIndex < GridResolution - 1; zIndex++)
         {
-            for (var xIndex = 0; xIndex < GridResolution - 1; xIndex++)
+            for (int xIndex = 0; xIndex < GridResolution - 1; xIndex++)
             {
+                var worldX = -half + xIndex * step;
+                var worldZ = -half + zIndex * step;
+                
                 var v00 = (ushort)(zIndex * GridResolution + xIndex);
                 var v01 = (ushort)((zIndex + 1) * GridResolution + xIndex);
                 var v10 = (ushort)(zIndex * GridResolution + xIndex + 1);
@@ -223,8 +247,16 @@ public class Terrain
                 indices[idx++] = v00;
                 indices[idx++] = v10;
                 indices[idx++] = v11;
+
+                normal = _getNormalFromHeightMap(xIndex, zIndex);
+                
+                
+                vertices[zIndex * GridResolution + xIndex] = new VertexPositionColorNormal(new Vector3(worldX, _heights[xIndex, zIndex], worldZ), Color.Black, normal);
+                _normals[xIndex, zIndex] = _getNormalFromHeightMap(xIndex, zIndex); 
             }
         }
+        _vertices = new VertexBuffer(device, VertexPositionColorNormal.VertexDeclaration, vertices.Length, BufferUsage.WriteOnly);
+        _vertices.SetData(vertices);
 
         _indices = new IndexBuffer(device, IndexElementSize.SixteenBits, indices.Length, BufferUsage.WriteOnly);
         _indices.SetData(indices);
@@ -306,19 +338,7 @@ public class Terrain
         var x0 = (int)MathF.Floor(gx);
         var z0 = (int)MathF.Floor(gz);
         
-        var x1 = Math.Min(x0 + 1, GridResolution - 1);
-        var z1 = Math.Min(z0 + 1, GridResolution - 1);
-        
-        float centerHeight = _heights[x0, z0];
-        float xHeigth = _heights[x1, z0]; 
-        float zHeigth = _heights[x0, z1];
-        
-        Vector3 dx = new Vector3(step, xHeigth - centerHeight, 0); 
-        Vector3 dz = new Vector3(0, zHeigth - centerHeight, step);
-
-        Vector3 normal = Vector3.Cross(dz, dx); 
-        
-        return Vector3.Normalize(normal);
+        return _normals[x0, z0];
     }
     
     
