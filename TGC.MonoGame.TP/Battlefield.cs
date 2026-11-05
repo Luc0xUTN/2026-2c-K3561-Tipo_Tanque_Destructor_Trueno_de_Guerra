@@ -168,9 +168,9 @@ public class Battlefield
         _forest.Remove(prop);
     }
 
-    public void Draw(GraphicsDevice device, BaseCamera camera, Light light , Matrix projection, BoundingFrustum boundingFrustum)
+    public void Draw(GraphicsDevice device, BaseCamera camera, Light light, Matrix projection, BoundingFrustum boundingFrustum)
     {
-        _terrain.Draw(device, camera, projection);
+        _terrain.Draw(device, camera, light, projection);
         _forest.Draw(device, camera, light, projection, boundingFrustum);
     }
 

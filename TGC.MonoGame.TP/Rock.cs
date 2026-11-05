@@ -48,7 +48,7 @@ public class Rock : Prop
 
     protected override void DrawMeshes(GraphicsDevice graphicsDevice)
     {
-        _effect.Parameters["DiffuseColor"]?.SetValue(_color.ToVector3());
+        _effect.Parameters["ModelColor"]?.SetValue(_color.ToVector3());
         base.DrawMeshes(graphicsDevice);
     }
 }

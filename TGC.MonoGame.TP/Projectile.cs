@@ -161,11 +161,15 @@ public class Projectile : Entity
 
     protected override void DrawMeshes(GraphicsDevice graphicsDevice)
     {
-        _effect.Parameters["DiffuseColor"].SetValue(_color.ToVector3());
+        _effect.Parameters["ModelColor"]?.SetValue(_color.ToVector3());
+        _effect.Parameters["KAmbient"]?.SetValue(1.0f);
+        _effect.Parameters["AmbientColor"]?.SetValue(Vector3.One);
         
         foreach (var mesh in _model.Meshes)
         {
-            _effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * _world);
+            Matrix meshWorld = mesh.ParentBone.Transform * _world;
+            _effect.Parameters["World"].SetValue(meshWorld);
+            _effect.Parameters["InverseTransposeWorld"]?.SetValue(Matrix.Transpose(Matrix.Invert(meshWorld)));
             mesh.Draw();
         }
     }

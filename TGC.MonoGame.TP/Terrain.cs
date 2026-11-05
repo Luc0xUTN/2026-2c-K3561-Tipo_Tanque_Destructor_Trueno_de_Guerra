@@ -43,6 +43,12 @@ public class Terrain
 
     private Color _color { get; set; }
 
+    private float _kAmbient = 0.35f;
+    private float _kDiffuse = 0.75f;
+    private float _kSpecular = 0.05f;
+    private float _shininess = 4.0f;
+    
+
     private VertexBuffer _vertices;
     private IndexBuffer _indices;
     private Effect _effect;
@@ -207,9 +213,7 @@ public class Terrain
         
         var vertices = new VertexPositionColorNormal[GridResolution * GridResolution];
         var half = _size / 2f;
-        var step = _size / (GridResolution - 1);
-
-        Vector3 normal; 
+        var step = _size / (GridResolution - 1); 
         
         for (var zIndex = 0; zIndex < GridResolution; zIndex++)
         {
@@ -224,6 +228,24 @@ public class Terrain
             }
         }
 
+        for (var zIndex = 0; zIndex < GridResolution; zIndex++)
+        {
+            for (var xIndex = 0; xIndex < GridResolution; xIndex++)
+            {
+                var worldX = -half + xIndex * step;
+                var worldZ = -half + zIndex * step;
+
+                var normal = _getNormalFromHeightMap(xIndex, zIndex);
+                _normals[xIndex, zIndex] = normal;
+
+                vertices[zIndex * GridResolution + xIndex] = new VertexPositionColorNormal(
+                    new Vector3(worldX, _heights[xIndex, zIndex], worldZ), 
+                    Color.White, 
+                    normal
+                );
+            }
+        }
+
         // Dos triángulos por celda, mismo esquema que la Unidad 7 (pág. 9):
         // primero {Xi,Zi} {Xi,Zi+1} {Xi+1,Zi+1}, segundo {Xi,Zi} {Xi+1,Zi} {Xi+1,Zi+1}.
         var indices = new ushort[(GridResolution - 1) * (GridResolution - 1) * 6];
@@ -232,9 +254,6 @@ public class Terrain
         {
             for (int xIndex = 0; xIndex < GridResolution - 1; xIndex++)
             {
-                var worldX = -half + xIndex * step;
-                var worldZ = -half + zIndex * step;
-                
                 var v00 = (ushort)(zIndex * GridResolution + xIndex);
                 var v01 = (ushort)((zIndex + 1) * GridResolution + xIndex);
                 var v10 = (ushort)(zIndex * GridResolution + xIndex + 1);
@@ -247,12 +266,6 @@ public class Terrain
                 indices[idx++] = v00;
                 indices[idx++] = v10;
                 indices[idx++] = v11;
-
-                normal = _getNormalFromHeightMap(xIndex, zIndex);
-                
-                
-                vertices[zIndex * GridResolution + xIndex] = new VertexPositionColorNormal(new Vector3(worldX, _heights[xIndex, zIndex], worldZ), Color.Black, normal);
-                _normals[xIndex, zIndex] = _getNormalFromHeightMap(xIndex, zIndex); 
             }
         }
         _vertices = new VertexBuffer(device, VertexPositionColorNormal.VertexDeclaration, vertices.Length, BufferUsage.WriteOnly);
@@ -342,7 +355,7 @@ public class Terrain
     }
     
     
-    public void Draw(GraphicsDevice device, BaseCamera camera, Matrix projection)
+    public void Draw(GraphicsDevice device, BaseCamera camera, Light light, Matrix projection)
     {
         device.SetVertexBuffer(_vertices);
         device.Indices = _indices;
@@ -350,7 +363,20 @@ public class Terrain
         _effect.Parameters["View"].SetValue(camera.GetView());
         _effect.Parameters["Projection"].SetValue(projection);
         _effect.Parameters["World"].SetValue(_world);
-        _effect.Parameters["DiffuseColor"].SetValue(_color.ToVector3());
+        _effect.Parameters["InverseTransposeWorld"].SetValue(Matrix.Transpose(Matrix.Invert(_world)));
+
+        _effect.Parameters["LightPosition"].SetValue(light.Position);
+        _effect.Parameters["AmbientColor"].SetValue(light.AmbientColor);
+        _effect.Parameters["DiffuseColor"].SetValue(light.DiffuseColor);
+        _effect.Parameters["SpecularColor"].SetValue(light.SpecularColor);
+
+        _effect.Parameters["KAmbient"].SetValue(_kAmbient);
+        _effect.Parameters["KDiffuse"].SetValue(_kDiffuse);
+        _effect.Parameters["KSpecular"].SetValue(_kSpecular);
+        _effect.Parameters["Shininess"].SetValue(_shininess);
+
+        _effect.Parameters["CameraPosition"].SetValue(camera.Position);
+        _effect.Parameters["ModelColor"].SetValue(_color.ToVector3());
 
         foreach (var pass in _effect.CurrentTechnique.Passes)
         {
