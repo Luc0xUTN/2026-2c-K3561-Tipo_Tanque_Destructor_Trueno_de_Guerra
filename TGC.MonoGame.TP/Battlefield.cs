@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using TGC.MonoGame.TP.Cameras;
 using TGC.MonoGame.TP.Collisions;
 
 namespace TGC.MonoGame.TP;
@@ -167,10 +168,10 @@ public class Battlefield
         _forest.Remove(prop);
     }
 
-    public void Draw(GraphicsDevice device, Matrix view, Matrix projection, BoundingFrustum boundingFrustum)
+    public void Draw(GraphicsDevice device, BaseCamera camera, Light light , Matrix projection, BoundingFrustum boundingFrustum)
     {
-        _terrain.Draw(device, view, projection);
-        _forest.Draw(device, view, projection, boundingFrustum);
+        _terrain.Draw(device, camera, projection);
+        _forest.Draw(device, camera, light, projection, boundingFrustum);
     }
 
     // Única forma en que el resto del juego (spawn de tanque, más adelante IA)

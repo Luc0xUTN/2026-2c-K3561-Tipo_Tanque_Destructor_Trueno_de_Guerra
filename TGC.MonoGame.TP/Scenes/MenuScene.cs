@@ -32,6 +32,8 @@ public class MenuScene : Scene
     
     public bool FlTransition { get => _flTransition; set =>  _flTransition = value ;}
     
+    private Light _sunlight = new Light(); 
+
     
     public MenuScene(Game game)
     {
@@ -61,6 +63,11 @@ public class MenuScene : Scene
         _spriteBatch = new SpriteBatch(_device);
         
         _boundingFrustum = new BoundingFrustum(_camera.GetView() * _projection);
+        
+        _sunlight.AmbientColor = new Vector3(0.35f, 0.42f, 0.55f); 
+        _sunlight.DiffuseColor = new Vector3(1.0f, 0.97f, 0.88f);
+        _sunlight.SpecularColor = new Vector3(1.0f, 1.0f, 0.95f);
+        _sunlight.Position = new Vector3(3500f, 4000f, 2500f);
     }
 
     public void LoadContent()
@@ -83,7 +90,7 @@ public class MenuScene : Scene
     public void Draw()
     {
 
-        _battlefield.Draw(_device, _camera.GetView(),  _projection, _boundingFrustum);
+        _battlefield.Draw(_device, _camera, _sunlight, _projection, _boundingFrustum);
         
         _view.Draw();
     }

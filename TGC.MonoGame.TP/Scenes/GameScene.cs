@@ -436,7 +436,7 @@ public class GameScene : Scene
             projectile.Draw(_device, view, _projection);
         }
 
-        _battlefield.Draw(_device, view, _projection, _boundingFrustum);
+        _battlefield.Draw(_device, _camera, _sunlight,  _projection, _boundingFrustum);
         
         if (_physicsSystem is DebugPhysicsSystem)
             ((DebugPhysicsSystem) _physicsSystem).Draw(view, _projection);

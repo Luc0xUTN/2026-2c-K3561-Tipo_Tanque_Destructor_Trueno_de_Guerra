@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using TGC.MonoGame.TP.Cameras;
 using TGC.MonoGame.TP.Collisions;
 
 namespace TGC.MonoGame.TP;
@@ -88,8 +89,8 @@ public class Forest
                     float scaleVariation = (float)random.NextDouble() * 2;
                     Vector3 scale = new Vector3(scaleVariation, scaleVariation, scaleVariation);
                     int rockType = (int)random.NextInt64(4);
-
-                    var rock = new Rock(new Vector3(posX, getHeightAt(posX, posZ), posZ), scale, new Vector3(0,0,0), color, rockType);
+                    
+                    var rock = new Rock(new Vector3(posX, getHeightAt(posX, posZ), posZ), scale, new Vector3(0,0,0), color, 0.2f, 0.7f, 0.2f, 16.0f, rockType);
                     rock.Initialize();
 
                     _rocks.Add(rock);
@@ -101,7 +102,7 @@ public class Forest
                     float scaleVariationXZ = (float)random.NextDouble() + 1;
                     Vector3 scale = new Vector3(scaleVariationXZ, scaleVariationY, scaleVariationXZ);
 
-                    var tree = new Tree(new Vector3(posX, getHeightAt(posX, posZ), posZ), scale, new Vector3(0,0,0));
+                    var tree = new Tree(new Vector3(posX, getHeightAt(posX, posZ), posZ), scale, new Vector3(0,0,0), 0.3f, 0.8f, 0.05f, 2.0f);
                     tree.Initialize();
 
                     _trees.Add(tree);
@@ -157,18 +158,18 @@ public class Forest
 
     }
 
-    public void Draw(GraphicsDevice device, Matrix view, Matrix projection, BoundingFrustum boundingFrustum)
+    public void Draw(GraphicsDevice device, BaseCamera camera, Light light, Matrix projection, BoundingFrustum boundingFrustum)
     {
         _rockEffect.Parameters["Projection"].SetValue(projection);
-        _rockEffect.Parameters["View"].SetValue(view);
+        _rockEffect.Parameters["View"].SetValue(camera.GetView());
         
         _treeEffect.Parameters["Projection"].SetValue(projection);
-        _treeEffect.Parameters["View"].SetValue(view);
+        _treeEffect.Parameters["View"].SetValue(camera.GetView());
         
         _props.ForEach(prop =>
         {
             if (boundingFrustum.Intersects(prop.BoundingSphere))
-                prop.Draw(device, view, projection); 
+                prop.Draw(device, camera, projection, light); 
         });
     }
 }

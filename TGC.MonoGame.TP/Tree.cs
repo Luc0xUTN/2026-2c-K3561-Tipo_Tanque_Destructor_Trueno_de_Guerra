@@ -7,10 +7,10 @@ namespace TGC.MonoGame.TP;
 
 public class Tree : Prop
 {
-    public Tree(Vector3 position, Vector3 scale, Vector3 rotation) : base(position, scale, rotation)
+    public Tree(Vector3 position, Vector3 scale, Vector3 rotation, float kAmbient, float kDiffuse, float kSpecular, float shininess) 
+        : base(position, scale, rotation, kAmbient, kDiffuse, kSpecular, shininess)
     {
         IsSolid = true;
-
     }
 
     // A diferencia de una roca, un árbol se aplasta: no empuja al tanque de

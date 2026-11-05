@@ -7,9 +7,12 @@
 #define PS_SHADERMODEL ps_4_0_level_9_1
 #endif
 
+#include "Lightning.fxh"
+
 float4x4 World;
 float4x4 View;
 float4x4 Projection;
+float4x4 InverseTransposeWorld;
 
 float Time = 0;
 
@@ -18,13 +21,16 @@ static const float alphaUmbral = 0.1;
 struct VertexShaderInput
 {
     float4 Position : POSITION0;
+    float3 Normal : NORMAL;
     float2 TextureCoordinate : TEXCOORD0; 
 };
 
 struct VertexShaderOutput
 {
     float4 Position : SV_POSITION;
-    float2 TextureCoordinate : TEXCOORD1;
+    float2 TextureCoordinate : TEXCOORD0;
+    float3 Normal : TEXCOORD1;
+    float4 WorldPosition : TEXCOORD2;
 };
 
 texture ModelTexture;
@@ -49,6 +55,10 @@ VertexShaderOutput MainVS(in VertexShaderInput input)
     
     output.Position = mul(viewPosition, Projection);
     
+    output.WorldPosition = worldPosition;
+    
+    output.Normal = mul(input.Normal, (float3x3) InverseTransposeWorld);
+    
     output.TextureCoordinate = input.TextureCoordinate;
     
     return output;
@@ -60,7 +70,9 @@ float4 MainPS(VertexShaderOutput input) : COLOR
     
     clip(textureColor.a - alphaUmbral); 
     
-    return textureColor;
+    float4 finalColor = CalculateBlinnPhong(input.WorldPosition.xyz, normalize(input.Normal), textureColor);
+    
+    return finalColor;
 }
 
 technique BasicColorDrawing

@@ -3,6 +3,7 @@ using System.IO;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using TGC.MonoGame.TP.Cameras;
 
 namespace TGC.MonoGame.TP;
 
@@ -321,12 +322,12 @@ public class Terrain
     }
     
     
-    public void Draw(GraphicsDevice device, Matrix view, Matrix projection)
+    public void Draw(GraphicsDevice device, BaseCamera camera, Matrix projection)
     {
         device.SetVertexBuffer(_vertices);
         device.Indices = _indices;
 
-        _effect.Parameters["View"].SetValue(view);
+        _effect.Parameters["View"].SetValue(camera.GetView());
         _effect.Parameters["Projection"].SetValue(projection);
         _effect.Parameters["World"].SetValue(_world);
         _effect.Parameters["DiffuseColor"].SetValue(_color.ToVector3());

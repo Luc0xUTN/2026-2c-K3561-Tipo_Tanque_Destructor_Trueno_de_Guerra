@@ -4,6 +4,7 @@ using System.Net.Mime;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using TGC.MonoGame.TP.Cameras;
 using TGC.MonoGame.TP.Collisions;
 
 namespace TGC.MonoGame.TP;
@@ -11,13 +12,21 @@ namespace TGC.MonoGame.TP;
 // Responsabilidad: Representa entidades que no se mueven por sus propios medios 
 public class Prop : Entity
 {
+    protected float _kAmbient;
+    protected float _kDiffuse;
+    protected float _kSpecular;
+    protected float _shininess;  
+    
     private List<Texture> _textures = new List<Texture>();
     public BoundingSphere BoundingSphere { get; protected set; }
     
-    public Prop(Vector3 position, Vector3 scale, Vector3 rotation) : base(position, scale, rotation)
+    public Prop(Vector3 position, Vector3 scale, Vector3 rotation, float kAmbient, float kDiffuse, float kSpecular, float shininess) : base(position, scale, rotation)
     {
         IsStatic = true;
-
+        _kAmbient = kAmbient;
+        _kDiffuse = kDiffuse;
+        _kSpecular = kSpecular;
+        _shininess = shininess; 
     }
 
     // Comportamiento al chocar con un tanque -- default = sólido de verdad
@@ -43,12 +52,33 @@ public class Prop : Entity
         base.LoadContent(model, effect);
     }
 
+    public virtual void Draw(GraphicsDevice graphicsDevice, BaseCamera camera, Matrix projection, Light light)
+    {
+        _effect.Parameters["Projection"]?.SetValue(projection);
+        _effect.Parameters["View"]?.SetValue(camera.GetView());
+
+        _effect.Parameters["LightPosition"]?.SetValue(light.Position);
+        _effect.Parameters["AmbientColor"]?.SetValue(light.AmbientColor);
+        _effect.Parameters["DiffuseColor"]?.SetValue(light.DiffuseColor);
+        _effect.Parameters["SpecularColor"]?.SetValue(light.SpecularColor);
+        
+        _effect.Parameters["KAmbient"]?.SetValue(_kAmbient);
+        _effect.Parameters["KDiffuse"]?.SetValue(_kDiffuse);
+        _effect.Parameters["KSpecular"]?.SetValue(_kSpecular);
+        _effect.Parameters["Shininess"]?.SetValue(_shininess);
+        
+        _effect.Parameters["CameraPosition"]?.SetValue(camera.Position);
+        
+        this.DrawMeshes(graphicsDevice);
+    }    
     
     protected override void DrawMeshes(GraphicsDevice graphicsDevice)
     {
         foreach (var mesh in _model.Meshes)
         {
-            _effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * _world);
+            Matrix meshWorld = mesh.ParentBone.Transform * _world;
+            _effect.Parameters["World"].SetValue(meshWorld);
+            _effect.Parameters["InverseTransposeWorld"]?.SetValue(Matrix.Transpose(Matrix.Invert(meshWorld)));
             
             for (int i = 0; i < mesh.MeshParts.Count; i++)
             {
@@ -56,7 +86,7 @@ public class Prop : Entity
                 
                 if (i < _textures.Count)
                 {
-                    _effect.Parameters["ModelTexture"].SetValue(_textures[i]);
+                    _effect.Parameters["ModelTexture"]?.SetValue(_textures[i]);
                 }
                 
                 _effect.CurrentTechnique.Passes[0].Apply(); 

@@ -28,7 +28,7 @@ public class Rock : Prop
         (new Vector3(-2.19f, -0.51f, -2.95f), new Vector3(2.04f, 1.51f, 2.91f))
     };
     
-    public Rock(Vector3 position, Vector3 scale, Vector3 rotation, Color color, int rockType = 0) : base(position, scale, rotation)
+    public Rock(Vector3 position, Vector3 scale, Vector3 rotation, Color color, float kAmbient, float kDiffuse, float kSpecular, float shininess, int rockType = 0) : base(position, scale, rotation, kAmbient, kDiffuse, kSpecular, shininess)
     {
         IsSolid = true;
         _color = color;
@@ -48,7 +48,7 @@ public class Rock : Prop
 
     protected override void DrawMeshes(GraphicsDevice graphicsDevice)
     {
-        _effect.Parameters["DiffuseColor"].SetValue(_color.ToVector3());
+        _effect.Parameters["DiffuseColor"]?.SetValue(_color.ToVector3());
         base.DrawMeshes(graphicsDevice);
     }
 }
