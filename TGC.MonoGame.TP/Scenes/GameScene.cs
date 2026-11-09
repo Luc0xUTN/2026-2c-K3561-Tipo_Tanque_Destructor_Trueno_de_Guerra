@@ -25,10 +25,12 @@ public class GameScene : Scene
     private Light _sunlight = new Light(); 
     
     private Battlefield _battlefield = null;
-    
+
     // TODO: Esto debe ser pasado a la clase tanque debido a que el tanque debe saber como se mueve su torreta y cañon
-    private TurretCanonCameraAimHandler _turretCanonMovementHandler; 
-    private Tank _tank;
+    private TurretCanonCameraAimHandler _turretCanonMovementHandler;
+    // PlayerTank, no Tank -- el HUD necesita leer cosas propias del jugador
+    // (God mode, cooldown de disparo) y GameHudView lo recibe tipado así.
+    private PlayerTank _tank;
     private List<AITank> _enemyTanks;
     private List<AITank> _allyTanks;
     private List<Projectile> _projectiles;
@@ -43,6 +45,15 @@ public class GameScene : Scene
     private Matrix _projection;
 
     private readonly Keys _keyFreeLook = Keys.C;
+    private readonly Keys _keyContinue = Keys.Enter;
+
+    // Fin de partida: None mientras se juega. Al entrar en cualquier otro
+    // estado, Update deja de tocar tanques/IA/física (quedan como estaban en
+    // ese frame) y solo espera a que el jugador confirme para volver al menú.
+    private enum GameResult { None, Victory, Defeat, Tregua }
+    private GameResult _gameResult = GameResult.None;
+    private bool _readyToReturnToMenu;
+    private float _matchTimeRemaining;
 
     // Recursos de la mira (retículo) que se dibuja sobre la escena.
     private SpriteBatch _spriteBatch;
@@ -181,9 +192,11 @@ public class GameScene : Scene
         _allTanks.AddRange(_enemyTanks);
         _allTanks.AddRange(_allyTanks);
 
-        _boundingFrustum = new BoundingFrustum(_camera.GetView() * _projection); 
-        
-        _game.IsMouseVisible = false; 
+        _boundingFrustum = new BoundingFrustum(_camera.GetView() * _projection);
+
+        _game.IsMouseVisible = false;
+
+        _matchTimeRemaining = GameSettings.MatchDurationSeconds;
     }
 
     public void LoadContent()
@@ -288,6 +301,17 @@ public class GameScene : Scene
 
     public void Update(float elapsedTime)
     {
+        // Partida ya terminada: ni tanques ni IA ni física se tocan más
+        // (quedan congelados tal como estaban cuando se disparó el
+        // resultado). Lo único que puede pasar acá es que el jugador
+        // confirme para volver al menú.
+        if (_gameResult != GameResult.None)
+        {
+            if (Keyboard.GetState().IsKeyDown(_keyContinue))
+                _readyToReturnToMenu = true;
+            return;
+        }
+
         KeyboardState keyboardState = Keyboard.GetState();
         MouseState mouseState = Mouse.GetState();
 
@@ -345,8 +369,8 @@ public class GameScene : Scene
         
         
         // Tanques enemigos muertos: se sacan de colisiones y de la lista que
-        // actualiza/dibuja GameScene. La condición de victoria (ShouldTransition)
-        // se basa en que no quede ninguno.
+        // actualiza/dibuja GameScene. La condición de Victoria (más abajo en
+        // este mismo Update) se basa en que no quede ninguno.
         foreach (var deadEnemy in _enemyTanks.FindAll(e => e.IsDead))
         {
             _physicsSystem.Remove(deadEnemy);
@@ -363,10 +387,33 @@ public class GameScene : Scene
 
         _allTanks.RemoveAll(e => e.IsDead);
 
-        _hudView.Update();
+        _matchTimeRemaining = MathHelper.Max(0f, _matchTimeRemaining - elapsedTime);
+
+        // Condición de fin de partida -- se evalúa acá, con los muertos de
+        // este frame ya sacados de _enemyTanks/_tank.IsDead actualizado, para
+        // no declarar Victoria un frame antes de tiempo si el jugador también
+        // murió junto con el último enemigo. Defeat tiene prioridad sobre
+        // Tregua por la misma razón (si el jugador ya murió, no importa que
+        // el reloj también haya llegado a 0 en el mismo frame).
+        if (_tank.IsDead)
+            _gameResult = GameResult.Defeat;
+        else if (_enemyTanks.Count == 0)
+            _gameResult = GameResult.Victory;
+        else if (_matchTimeRemaining <= 0f)
+            _gameResult = GameResult.Tregua;
+
+        _hudView.Update(_matchTimeRemaining);
+
+        if (_gameResult != GameResult.None)
+        {
+            _game.IsMouseVisible = true;
+            var (title, subtitle) = DescribeResult(_gameResult);
+            _hudView.ShowEndMessage(title, subtitle);
+            return;
+        }
 
         Mouse.SetPosition(_centerX,_centerY);
-        
+
         _physicsSystem.Update();
 
         // Árboles aplastados por un tanque este frame (ver PhysicsSystem.
@@ -379,7 +426,18 @@ public class GameScene : Scene
             _battlefield.RemoveProp(destroyedProp);
         }
 
-        _boundingFrustum.Matrix = _camera.GetView() * _projection; 
+        _boundingFrustum.Matrix = _camera.GetView() * _projection;
+    }
+
+    private static (string Title, string Subtitle) DescribeResult(GameResult result)
+    {
+        return result switch
+        {
+            GameResult.Victory => ("VICTORIA", "Todos los tanques enemigos fueron destruidos -- ENTER para volver al menu"),
+            GameResult.Defeat => ("DERROTA", "Tu tanque fue destruido -- ENTER para volver al menu"),
+            GameResult.Tregua => ("TREGUA", "El tiempo se agoto -- ENTER para volver al menu"),
+            _ => ("", "")
+        };
     }
 
     // La posición/dirección de spawn salen del transform absoluto del bone del
@@ -458,18 +516,12 @@ public class GameScene : Scene
 
     public bool ShouldTransition()
     {
-        return _tank.IsDead || _enemyTanks.Count == 0;
+        return _readyToReturnToMenu;
     }
 
     public Scene Transition()
     {
         MediaPlayer.Stop();
-        // Versión rápida para validar la idea end-to-end: solo mensaje por
-        // consola, sin pantalla de fin todavía (eso queda para una fase posterior).
-        if (_tank.IsDead)
-            Console.WriteLine("GAME OVER -- el jugador fue destruido.");
-        else
-            Console.WriteLine("VICTORIA -- todos los tanques enemigos fueron destruidos.");
 
         this.Unload();
 

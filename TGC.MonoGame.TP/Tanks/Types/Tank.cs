@@ -130,6 +130,12 @@ public class Tank : Entity
     public int Health { get; private set; } = MaxHealth;
     public bool IsDead => Health <= 0;
 
+    // Lo prende/apaga PlayerTank (God mode) -- genérico en Tank porque el
+    // daño en sí (TakeProjectileDamage/TakeCollisionDamage) vive acá, no en
+    // la subclase. No toca el choque físico (clipping de velocidad): God
+    // mode anula el daño, no la física.
+    public bool IsInvincible { get; set; }
+
     // Para el HUD: 0..1. El cast a float es necesario porque Health y
     // MaxHealth son ambos int -- sin él, Health/MaxHealth sería división
     // entera (truncada a 0 salvo que Health == MaxHealth).
@@ -162,6 +168,7 @@ public class Tank : Entity
     // disparo ya está limitado por el cooldown de disparo del que lo tiró).
     public void TakeProjectileDamage()
     {
+        if (IsInvincible) return;
         Health = Math.Max(0, Health - ProjectileDamage);
     }
 
@@ -171,6 +178,7 @@ public class Tank : Entity
     // Prop.TankCollisionDamage contra un prop destructible como Tree).
     public void TakeCollisionDamage(int amount)
     {
+        if (IsInvincible) return;
         if (_collisionDamageCooldownTimer > 0f) return;
 
         Health = Math.Max(0, Health - amount);

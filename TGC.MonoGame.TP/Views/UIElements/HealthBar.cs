@@ -9,18 +9,25 @@ namespace TGC.MonoGame.TP.Views.UIElements;
 public class HealthBar
 {
     private readonly Texture2D _pixel;
+    private readonly Color _backgroundColor;
+    private readonly Color _fillColor;
 
     public Vector2 Position { get; set; }
     public int Width { get; set; }
     public int Height { get; set; }
     public float Ratio { get; set; } = 1f;
 
-    public HealthBar(Texture2D pixel, Vector2 position, int width, int height)
+    // backgroundColor/fillColor opcionales -- por defecto los mismos colores
+    // de siempre (vida), pero la misma barra sirve para cualquier otra
+    // magnitud 0..1 (p. ej. el reload del cañón) con otra paleta.
+    public HealthBar(Texture2D pixel, Vector2 position, int width, int height, Color? backgroundColor = null, Color? fillColor = null)
     {
         _pixel = pixel;
         Position = position;
         Width = width;
         Height = height;
+        _backgroundColor = backgroundColor ?? Color.DarkRed;
+        _fillColor = fillColor ?? Color.LimeGreen;
     }
 
     public void Draw(SpriteBatch spriteBatch)
@@ -30,13 +37,13 @@ public class HealthBar
         var ratio = MathHelper.Clamp(Ratio, 0f, 1f);
 
         var background = new Rectangle(x, y, Width, Height);
-        spriteBatch.Draw(_pixel, background, Color.DarkRed);
+        spriteBatch.Draw(_pixel, background, _backgroundColor);
 
         var fillWidth = (int)(Width * ratio);
         if (fillWidth > 0)
         {
             var fill = new Rectangle(x, y, fillWidth, Height);
-            spriteBatch.Draw(_pixel, fill, Color.LimeGreen);
+            spriteBatch.Draw(_pixel, fill, _fillColor);
         }
     }
 }

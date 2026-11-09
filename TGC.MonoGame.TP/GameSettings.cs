@@ -7,6 +7,9 @@ namespace TGC.MonoGame.TP;
 public static class GameSettings
 {
     public const float MapSize  = 300f;
+    // Duración de una partida antes de que se declare Tregua si ninguno de
+    // los dos bandos fue aniquilado. Ajustar por feel, igual que MapSize.
+    public const float MatchDurationSeconds = 300f;
     // Radianes de puntería por píquel de movimiento del mouse. Bajar este valor hace la mira
     // menos sensible (antes 0.005).
     public static float Sensitivity { get; set; } = 0.0025f;
