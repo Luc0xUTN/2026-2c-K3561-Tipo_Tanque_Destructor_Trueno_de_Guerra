@@ -63,6 +63,45 @@ public class Tank : Entity
     private Matrix _cannonOriginalLocal = Matrix.Identity;
     private ModelMesh _cannonMesh;
     private ModelMesh _turretMesh;
+    private ModelMesh _hullMesh;
+
+    // Deformación por impacto de proyectil -- buffer circular en espacio
+    // LOCAL del Hull (la instancia concreta de ESTE tanque, no el Model
+    // compartido: cada tanque tiene su propio _effect/_impactPoints). Solo
+    // la carrocería se abolla (decisión de Dante: es donde más probabilidad
+    // hay de recibir un impacto) -- Turret/Cannon/ruedas no se tocan.
+    // Radio/fuerza del empuje NO viven acá -- son constantes de compilación
+    // en ModelShader.fx. Si hay que ajustarlas por feel, se tocan ahí.
+    //
+    // _hullLocalScale: el bone Hull trae pegada una escala (~100, igual en
+    // Panzer y T90 -- confirmado leyendo la matriz cruda) que NO se puede
+    // ignorar al sumar un offset en espacio local (ver ModelShader.fx). Se
+    // calcula UNA SOLA VEZ acá, en C#, y se sube como uniform fijo -- A
+    // PROPÓSITO no se lee la escala desde "World" dentro del shader: World
+    // cambia de malla a malla en el mismo DrawMeshes (Cannon tiene su
+    // propia escala no uniforme, ya documentada en GetCanonFiringDirection)
+    // y, si el shader no saltea bien el cálculo para esas otras mallas
+    // (el mismo compilador ya nos rompió un `if` antes con el indexado de
+    // ImpactPoints), terminaba usando la escala del Cannon por error y el
+    // caño desaparecía -- y eso NO alcanzó: el caño seguía sin verse
+    // incluso en una partida sin ningún impacto todavía (ImpactCount=0 en
+    // todos lados, matemáticamente un no-op). La causa real: el solo hecho
+    // de que Turret/Cannon pasaran por un vertex shader con ESTE código de
+    // más (aunque nunca se ejecutara su rama "activa") ya les rompía algo
+    // en este compilador. Arreglado de raíz con una técnica de shader
+    // APARTE (DeformedDrawing en ModelShader.fx) que solo se usa al
+    // dibujar el Hull -- Turret/Cannon/ruedas pasan por MainVS, sin tocar,
+    // byte a byte igual a como estaba antes de esta feature.
+    private const int MaxImpactPoints = 8;
+    private readonly Vector3[] _impactPoints = new Vector3[MaxImpactPoints];
+    // Mismo contenido que _impactPoints, como Vector4 (w sin usar) -- es lo
+    // que de verdad se sube al shader (ver el comentario de ImpactPoints en
+    // ModelShader.fx: el compilador de SM3.0 no acepta indexar un array de
+    // float3 con una variable de loop). Buffer reusado, no uno nuevo por frame.
+    private readonly Vector4[] _impactPointsUpload = new Vector4[MaxImpactPoints];
+    private int _impactCount;
+    private int _nextImpactSlot;
+    private float _hullLocalScale = 1f;
     // La velocidad terminal del modelo de orugas amortiguadas es ~accel/_dumping
     // (ver el comentario de Update más abajo) -- con _dumping=2 en el constructor,
     // 100 da ~50u/s, el doble que antes (era 50f ~= 25u/s). Afecta a todos los
@@ -166,10 +205,24 @@ public class Tank : Entity
 
     // Impacto directo de un proyectil -- siempre aplica, no tiene cooldown (un
     // disparo ya está limitado por el cooldown de disparo del que lo tiró).
-    public void TakeProjectileDamage()
+    // worldHitPoint: punto real de impacto (Projectile.TryHit), en espacio
+    // MUNDO. Se convierte a espacio LOCAL del Hull de ESTA instancia (no del
+    // Model compartido) invirtiendo su transform actual -- guardado así, el
+    // punto queda "pegado" a la malla y sigue al tanque adonde se mueva o
+    // gire, en vez de quedar clavado en la posición del mapa donde pegó el
+    // disparo (ver memoria del proyecto para la explicación completa).
+    // Buffer circular: el impacto más nuevo pisa al más viejo al llenarse.
+    public void TakeProjectileDamage(Vector3 worldHitPoint)
     {
         if (IsInvincible) return;
         Health = Math.Max(0, Health - ProjectileDamage);
+
+        if (_hullMesh == null) return;
+
+        var localHitPoint = Vector3.Transform(worldHitPoint, Matrix.Invert(GetHullWorldTransform()));
+        _impactPoints[_nextImpactSlot] = localHitPoint;
+        _nextImpactSlot = (_nextImpactSlot + 1) % MaxImpactPoints;
+        _impactCount = Math.Min(_impactCount + 1, MaxImpactPoints);
     }
 
     // Choque físico contra otro tanque/prop -- gateado por cooldown (ver comentario
@@ -245,7 +298,7 @@ public class Tank : Entity
     // multiplicando por E⁻¹ cada vez que se LEE el transform (ver
     // GetCannonAbsolute y el dibujo de Turret en DrawMeshes), nunca writeando
     // sobre el bone de nuevo.
-    public void LoadContent(Model model, Texture tankTexture, Texture caterpillarTexture,  Effect tankEffect,  string turretBoneName, string canonBoneName, string leftCaterpillarName, string rightCaterpillarName, List<string> leftWheelsNames, List<string> rightWheelNames, string leftDriveSprocket, string rightDriveSprocket, bool correctTurretCannonRoll180 = false, float visualGroundOffset = 0f)
+    public void LoadContent(Model model, Texture tankTexture, Texture caterpillarTexture,  Effect tankEffect,  string turretBoneName, string canonBoneName, string leftCaterpillarName, string rightCaterpillarName, List<string> leftWheelsNames, List<string> rightWheelNames, string leftDriveSprocket, string rightDriveSprocket, bool correctTurretCannonRoll180 = false, float visualGroundOffset = 0f, string hullBoneName = "Hull")
     {
         _model = model;
         _effect = tankEffect;
@@ -304,6 +357,13 @@ public class Tank : Entity
         // lo necesita para CUALQUIER modelo (Panzer incluido), no solo T90.
         _cannonMesh = _model.Meshes.FirstOrDefault(m => m.Name == canonBoneName);
 
+        // Confirmado inspeccionando el .fbx crudo de los dos modelos: el
+        // nodo se llama "Hull" en Panzer y en T90 por igual (default del
+        // parámetro) -- a diferencia de Turret/Cannon no hace falta que
+        // GameScene lo pase explícito, pero queda como parámetro por las
+        // dudas de que algún modelo futuro lo llame distinto.
+        _hullMesh = _model.Meshes.FirstOrDefault(m => m.Name == hullBoneName);
+
         // T90: Cannon NO es hijo de Turret en la jerarquía real del modelo
         // (confirmado inspeccionando los bones -- en el Panzer sí lo es), así
         // que al yawear la torreta el caño no la sigue. No se puede reparentar
@@ -337,6 +397,18 @@ public class Tank : Entity
         // dinámico en 0 (todavía no corrió ningún Update real), así que esto
         // es el reposo real del modelo. Ver CalibrateFiringDirection.
         CalibrateFiringDirection();
+
+        if (_hullMesh != null)
+        {
+            // length() de la primera fila: para una escala uniforme (que es
+            // lo que tiene el Hull en los dos modelos -- confirmado, M11=
+            // M22=M33) esto da exactamente ese factor. Se calcula una sola
+            // vez acá (no en cada impacto ni en el shader) -- ver el
+            // comentario de _hullLocalScale más arriba.
+            var hullWorld = GetHullWorldTransform();
+            var row0 = new Vector3(hullWorld.M11, hullWorld.M12, hullWorld.M13);
+            _hullLocalScale = MathF.Max(row0.Length(), 0.0001f);
+        }
     }
 
     public Turret GetTurret()
@@ -418,6 +490,17 @@ public class Tank : Entity
     {
         _model.CopyAbsoluteBoneTransformsTo(_absoluteWorldsMatrix);
         return GetCannonAbsolute() * GetVisualWorld();
+    }
+
+    // Mismo motivo que GetCanonWorldTransform de arriba (recalcular fresco,
+    // no reusar lo que dejó el último Draw) -- la usa TakeProjectileDamage,
+    // que corre en Update, para convertir el punto de impacto (mundo) a
+    // espacio local del Hull. El Hull no tiene corrección de rig como
+    // Turret/Cannon -- es un bone normal, incluso en el T90.
+    private Matrix GetHullWorldTransform()
+    {
+        _model.CopyAbsoluteBoneTransformsTo(_absoluteWorldsMatrix);
+        return _absoluteWorldsMatrix[_hullMesh.ParentBone.Index] * GetVisualWorld();
     }
 
     // Dirección real de disparo -- NO se calcula leyendo .Forward del
@@ -637,7 +720,12 @@ public class Tank : Entity
     {
         _effect.Parameters["ModelTexture"].SetValue(_tankTexture);
         _effect.Parameters["TexturePositions"].SetValue(new Vector2(0,0));
-        
+
+        // Por defecto, la técnica SIN deformación -- la misma que corría
+        // antes de esta feature para TODO. Solo el Hull (y solo si tiene
+        // impactos) la cambia más abajo, puntualmente para su propio Draw.
+        _effect.CurrentTechnique = _effect.Techniques["BasicColorDrawing"];
+
         _model.CopyAbsoluteBoneTransformsTo(_absoluteWorldsMatrix);
         var visualWorld = GetVisualWorld();
         foreach (var mesh in _generalMeshes)
@@ -660,9 +748,34 @@ public class Tank : Entity
             _effect.Parameters["World"].SetValue(meshWorld);
             _effect.Parameters["InverseTransposeWorld"].SetValue(Matrix.Transpose(Matrix.Invert(meshWorld)));
 
+            // Solo el Hull, y solo si ya recibió algún impacto, pasa a la
+            // técnica DeformedDrawing (ver su comentario en ModelShader.fx
+            // para la saga completa de por qué es una técnica aparte y no
+            // un uniform más en la de siempre). Para cualquier otra malla
+            // -- Turret/Cannon/ruedas -- ni se toca _effect.CurrentTechnique,
+            // sigue en BasicColorDrawing, que ni sabe que esto existe.
+            if (mesh == _hullMesh && _impactCount > 0)
+            {
+                _effect.CurrentTechnique = _effect.Techniques["DeformedDrawing"];
+                _effect.Parameters["ImpactLocalScale"].SetValue(_hullLocalScale);
+                _effect.Parameters["ImpactCount"].SetValue((float) _impactCount);
+                for (var i = 0; i < MaxImpactPoints; i++)
+                {
+                    _impactPointsUpload[i] = i < _impactCount ? new Vector4(_impactPoints[i], 0f) : Vector4.Zero;
+                }
+                _effect.Parameters["ImpactPoints"].SetValue(_impactPointsUpload);
+            }
+
             mesh.Draw();
+
+            // Vuelve a la técnica de siempre apenas termina de dibujar el
+            // Hull -- nada más del tanque (ruedas, orugas) debe heredarla.
+            if (mesh == _hullMesh)
+            {
+                _effect.CurrentTechnique = _effect.Techniques["BasicColorDrawing"];
+            }
         }
-        
+
         _drawCatterpillars(graphicsDevice);
     }
 
@@ -670,6 +783,9 @@ public class Tank : Entity
     {
         var visualWorld = GetVisualWorld();
 
+        // CurrentTechnique ya está en BasicColorDrawing (DrawMeshes la
+        // vuelve a dejar así apenas termina de dibujar el Hull) -- las
+        // orugas ni se enteran de que la deformación existe.
         _effect.Parameters["ModelTexture"].SetValue(_caterpillarTexture);
 
         _effect.Parameters["TexturePositions"].SetValue(new Vector2(0, _leftCaterpillarPosition));

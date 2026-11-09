@@ -87,7 +87,7 @@ public class Projectile : Entity
             if (TryHit(tank.Collider, previousPosition, nextPosition, out var hitPoint))
             {
                 IsAlive = false;
-                tank.TakeProjectileDamage();
+                tank.TakeProjectileDamage(hitPoint);
                 Console.WriteLine($"Projectile impact on {tank.GetType().Name} at {hitPoint} -- vida restante: {tank.Health}");
                 return;
             }
