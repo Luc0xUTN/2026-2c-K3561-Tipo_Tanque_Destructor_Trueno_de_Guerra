@@ -19,6 +19,8 @@ public class Prop : Entity
     
     private List<Texture> _textures = new List<Texture>();
     public BoundingSphere BoundingSphere { get; protected set; }
+
+    public virtual bool UsesAlphaTestForShadow => false;
     
     public Prop(Vector3 position, Vector3 scale, Vector3 rotation, float kAmbient, float kDiffuse, float kSpecular, float shininess) : base(position, scale, rotation)
     {
@@ -52,7 +54,14 @@ public class Prop : Entity
         base.LoadContent(model, effect);
     }
 
-    public virtual void Draw(GraphicsDevice graphicsDevice, BaseCamera camera, Matrix projection, Light light)
+    
+    public virtual void Draw(
+        GraphicsDevice graphicsDevice,
+        BaseCamera camera,
+        Matrix projection,
+        Light light,
+        Matrix? lightViewProjection = null,
+        Texture2D shadowMap = null)
     {
         _effect.Parameters["Projection"]?.SetValue(projection);
         _effect.Parameters["View"]?.SetValue(camera.GetView());
@@ -66,37 +75,63 @@ public class Prop : Entity
         _effect.Parameters["KDiffuse"]?.SetValue(_kDiffuse);
         _effect.Parameters["KSpecular"]?.SetValue(_kSpecular);
         _effect.Parameters["Shininess"]?.SetValue(_shininess);
-        
+
         _effect.Parameters["CameraPosition"]?.SetValue(camera.Position);
-        
-        this.DrawMeshes(graphicsDevice);
-    }    
-    
+
+        if (shadowMap != null && lightViewProjection.HasValue)
+        {
+            _effect.Parameters["LightViewProjection"]?.SetValue(lightViewProjection.Value);
+            _effect.Parameters["ShadowMap"]?.SetValue(shadowMap);
+            _effect.Parameters["ShadowMapTexelSize"]?.SetValue(1.0f / shadowMap.Width);
+        }
+
+        DrawMeshes(graphicsDevice);
+    }
+
     protected override void DrawMeshes(GraphicsDevice graphicsDevice)
+    {
+        RenderMeshesWithEffect(graphicsDevice, _effect);
+    }
+
+    public virtual void DrawShadowPass(
+        GraphicsDevice graphicsDevice,
+        Matrix lightView,
+        Matrix lightProjection,
+        Effect shadowEffect)
+    {
+        shadowEffect.Parameters["Projection"]?.SetValue(lightProjection);
+        shadowEffect.Parameters["View"]?.SetValue(lightView);
+        shadowEffect.Parameters["UseAlphaTest"]?.SetValue(UsesAlphaTestForShadow);
+        shadowEffect.Parameters["AlphaThreshold"]?.SetValue(0.1f);
+
+        RenderMeshesWithEffect(graphicsDevice, shadowEffect);
+    }
+
+    private void RenderMeshesWithEffect(GraphicsDevice graphicsDevice, Effect effect)
     {
         foreach (var mesh in _model.Meshes)
         {
             Matrix meshWorld = mesh.ParentBone.Transform * _world;
-            _effect.Parameters["World"].SetValue(meshWorld);
-            _effect.Parameters["InverseTransposeWorld"]?.SetValue(Matrix.Transpose(Matrix.Invert(meshWorld)));
-            
+            effect.Parameters["World"]?.SetValue(meshWorld);
+            effect.Parameters["InverseTransposeWorld"]?.SetValue(Matrix.Transpose(Matrix.Invert(meshWorld)));
+
             for (int i = 0; i < mesh.MeshParts.Count; i++)
             {
-                ModelMeshPart part = mesh.MeshParts[i];        
-                
+                ModelMeshPart part = mesh.MeshParts[i];
+
                 if (i < _textures.Count)
                 {
-                    _effect.Parameters["ModelTexture"]?.SetValue(_textures[i]);
+                    effect.Parameters["ModelTexture"]?.SetValue(_textures[i]);
                 }
-                
-                _effect.CurrentTechnique.Passes[0].Apply(); 
+
+                effect.CurrentTechnique.Passes[0].Apply();
                 graphicsDevice.SetVertexBuffer(part.VertexBuffer);
                 graphicsDevice.Indices = part.IndexBuffer;
-                
+
                 graphicsDevice.DrawIndexedPrimitives(
                     PrimitiveType.TriangleList,
                     part.VertexOffset,
-                    part.StartIndex, 
+                    part.StartIndex,
                     part.PrimitiveCount
                 );
             }

@@ -695,58 +695,53 @@ public class Tank : Entity
         _rotationDirection = direction;
     }
 
-    public void Draw(GraphicsDevice graphicsDevice, BaseCamera camera, Matrix projection, Light light)
+    public void Draw(
+        GraphicsDevice graphicsDevice,
+        BaseCamera camera,
+        Matrix projection,
+        Light light,
+        Matrix? lightViewProjection = null,
+        Texture2D shadowMap = null)
     {
-        _effect.Parameters["Projection"].SetValue(projection);
-        _effect.Parameters["View"].SetValue(camera.GetView());
-        
-        _effect.Parameters["LightPosition"].SetValue(light.Position);
-        _effect.Parameters["AmbientColor"].SetValue(light.AmbientColor);
-        _effect.Parameters["DiffuseColor"].SetValue(light.DiffuseColor);
-        _effect.Parameters["SpecularColor"].SetValue(light.SpecularColor);
-        
-        _effect.Parameters["KAmbient"].SetValue(_kAmbient);
-        _effect.Parameters["KDiffuse"].SetValue(_kDiffuse);
-        _effect.Parameters["KSpecular"].SetValue(_kSpecular);
-        _effect.Parameters["Shininess"].SetValue(_shininess);
-        
-        _effect.Parameters["CameraPosition"].SetValue(camera.Position);
-        
-        
+        _effect.Parameters["Projection"]?.SetValue(projection);
+        _effect.Parameters["View"]?.SetValue(camera.GetView());
+
+        _effect.Parameters["LightPosition"]?.SetValue(light.Position);
+        _effect.Parameters["AmbientColor"]?.SetValue(light.AmbientColor);
+        _effect.Parameters["DiffuseColor"]?.SetValue(light.DiffuseColor);
+        _effect.Parameters["SpecularColor"]?.SetValue(light.SpecularColor);
+        _effect.Parameters["KAmbient"]?.SetValue(_kAmbient);
+        _effect.Parameters["KDiffuse"]?.SetValue(_kDiffuse);
+        _effect.Parameters["KSpecular"]?.SetValue(_kSpecular);
+        _effect.Parameters["Shininess"]?.SetValue(_shininess);
+        _effect.Parameters["CameraPosition"]?.SetValue(camera.Position);
+
+        if (shadowMap != null && lightViewProjection.HasValue)
+        {
+            _effect.Parameters["LightViewProjection"]?.SetValue(lightViewProjection.Value);
+            _effect.Parameters["ShadowMap"]?.SetValue(shadowMap);
+            _effect.Parameters["ShadowMapTexelSize"]?.SetValue(1.0f / shadowMap.Width);
+        }
+
         DrawMeshes(graphicsDevice);
     }
-    
+
     protected override void DrawMeshes(GraphicsDevice graphicsDevice)
     {
-        _effect.Parameters["ModelTexture"].SetValue(_tankTexture);
-        _effect.Parameters["TexturePositions"].SetValue(new Vector2(0,0));
-
         // Por defecto, la técnica SIN deformación -- la misma que corría
         // antes de esta feature para TODO. Solo el Hull (y solo si tiene
         // impactos) la cambia más abajo, puntualmente para su propio Draw.
+        _effect.Parameters["ModelTexture"]?.SetValue(_tankTexture);
+        _effect.Parameters["TexturePositions"]?.SetValue(Vector2.Zero);
         _effect.CurrentTechnique = _effect.Techniques["BasicColorDrawing"];
 
         _model.CopyAbsoluteBoneTransformsTo(_absoluteWorldsMatrix);
         var visualWorld = GetVisualWorld();
         foreach (var mesh in _generalMeshes)
         {
-            Matrix meshAbsolute;
-            if (mesh == _cannonMesh)
-            {
-                meshAbsolute = GetCannonAbsolute();
-            }
-            else if (mesh == _turretMesh)
-            {
-                meshAbsolute = GetTurretAbsolute();
-            }
-            else
-            {
-                meshAbsolute = _absoluteWorldsMatrix[mesh.ParentBone.Index];
-            }
-            Matrix meshWorld = meshAbsolute * visualWorld;
-
+            Matrix meshWorld = GetMeshAbsoluteMatrix(mesh) * visualWorld;
             _effect.Parameters["World"].SetValue(meshWorld);
-            _effect.Parameters["InverseTransposeWorld"].SetValue(Matrix.Transpose(Matrix.Invert(meshWorld)));
+            _effect.Parameters["InverseTransposeWorld"]?.SetValue(Matrix.Transpose(Matrix.Invert(meshWorld)));
 
             // Solo el Hull, y solo si ya recibió algún impacto, pasa a la
             // técnica DeformedDrawing (ver su comentario en ModelShader.fx
@@ -756,14 +751,7 @@ public class Tank : Entity
             // sigue en BasicColorDrawing, que ni sabe que esto existe.
             if (mesh == _hullMesh && _impactCount > 0)
             {
-                _effect.CurrentTechnique = _effect.Techniques["DeformedDrawing"];
-                _effect.Parameters["ImpactLocalScale"].SetValue(_hullLocalScale);
-                _effect.Parameters["ImpactCount"].SetValue((float) _impactCount);
-                for (var i = 0; i < MaxImpactPoints; i++)
-                {
-                    _impactPointsUpload[i] = i < _impactCount ? new Vector4(_impactPoints[i], 0f) : Vector4.Zero;
-                }
-                _effect.Parameters["ImpactPoints"].SetValue(_impactPointsUpload);
+                ApplyHullDeformation();
             }
 
             mesh.Draw();
@@ -776,33 +764,85 @@ public class Tank : Entity
             }
         }
 
-        _drawCatterpillars(graphicsDevice);
+        DrawCaterpillars(visualWorld);
     }
 
-    private void _drawCatterpillars(GraphicsDevice graphicsDevice)
+    // Se usa para proyectar sombras
+    public void DrawShadowPass(GraphicsDevice graphicsDevice, Matrix lightView, Matrix lightProjection, Effect shadowEffect)
     {
+        shadowEffect.Parameters["View"].SetValue(lightView);
+        shadowEffect.Parameters["Projection"].SetValue(lightProjection);
+        shadowEffect.Parameters["UseAlphaTest"]?.SetValue(false);
+        shadowEffect.Parameters["ModelTexture"]?.SetValue(_tankTexture);
+
+        _model.CopyAbsoluteBoneTransformsTo(_absoluteWorldsMatrix);
         var visualWorld = GetVisualWorld();
 
+        foreach (var mesh in _generalMeshes)
+        {
+            Matrix meshWorld = GetMeshAbsoluteMatrix(mesh) * visualWorld;
+            DrawMeshPartsWithEffect(graphicsDevice, mesh, meshWorld, shadowEffect);
+        }
+
+        DrawMeshPartsWithEffect(graphicsDevice, _leftCaterpillarMesh, _absoluteWorldsMatrix[_leftCaterpillarMesh.ParentBone.Index] * visualWorld, shadowEffect);
+        DrawMeshPartsWithEffect(graphicsDevice, _rightCaterpillarMesh, _absoluteWorldsMatrix[_rightCaterpillarMesh.ParentBone.Index] * visualWorld, shadowEffect);
+    }
+
+    private Matrix GetMeshAbsoluteMatrix(ModelMesh mesh)
+    {
+        if (mesh == _cannonMesh) return GetCannonAbsolute();
+        if (mesh == _turretMesh) return GetTurretAbsolute();
+        return _absoluteWorldsMatrix[mesh.ParentBone.Index];
+    }
+
+    private static void DrawMeshPartsWithEffect(GraphicsDevice device, ModelMesh mesh, Matrix world, Effect effect)
+    {
+        if (mesh == null) return;
+        effect.Parameters["World"].SetValue(world);
+
+        foreach (var part in mesh.MeshParts)
+        {
+            device.SetVertexBuffer(part.VertexBuffer);
+            device.Indices = part.IndexBuffer;
+            effect.CurrentTechnique.Passes[0].Apply();
+            device.DrawIndexedPrimitives(
+                PrimitiveType.TriangleList,
+                part.VertexOffset,
+                part.StartIndex,
+                part.PrimitiveCount
+            );
+        }
+    }
+
+    private void ApplyHullDeformation()
+    {
+        _effect.CurrentTechnique = _effect.Techniques["DeformedDrawing"];
+        _effect.Parameters["ImpactLocalScale"]?.SetValue(_hullLocalScale);
+        _effect.Parameters["ImpactCount"]?.SetValue((float)_impactCount);
+        for (var i = 0; i < MaxImpactPoints; i++)
+        {
+            _impactPointsUpload[i] = i < _impactCount ? new Vector4(_impactPoints[i], 0f) : Vector4.Zero;
+        }
+        _effect.Parameters["ImpactPoints"]?.SetValue(_impactPointsUpload);
+    }
+
+    private void DrawCaterpillars(Matrix visualWorld)
+    {
         // CurrentTechnique ya está en BasicColorDrawing (DrawMeshes la
         // vuelve a dejar así apenas termina de dibujar el Hull) -- las
         // orugas ni se enteran de que la deformación existe.
-        _effect.Parameters["ModelTexture"].SetValue(_caterpillarTexture);
+        _effect.Parameters["ModelTexture"]?.SetValue(_caterpillarTexture);
 
-        _effect.Parameters["TexturePositions"].SetValue(new Vector2(0, _leftCaterpillarPosition));
-
+        _effect.Parameters["TexturePositions"]?.SetValue(new Vector2(0, _leftCaterpillarPosition));
         Matrix leftCaterpillarWorld = _absoluteWorldsMatrix[_leftCaterpillarMesh.ParentBone.Index] * visualWorld;
         _effect.Parameters["World"].SetValue(leftCaterpillarWorld);
-        _effect.Parameters["InverseTransposeWorld"].SetValue(Matrix.Transpose(Matrix.Invert(leftCaterpillarWorld)));
-
+        _effect.Parameters["InverseTransposeWorld"]?.SetValue(Matrix.Transpose(Matrix.Invert(leftCaterpillarWorld)));
         _leftCaterpillarMesh.Draw();
 
-
-        _effect.Parameters["TexturePositions"].SetValue(new Vector2(0, _rightCaterpillarPosition));
-
+        _effect.Parameters["TexturePositions"]?.SetValue(new Vector2(0, _rightCaterpillarPosition));
         Matrix rightCaterpillarWorld = _absoluteWorldsMatrix[_rightCaterpillarMesh.ParentBone.Index] * visualWorld;
         _effect.Parameters["World"].SetValue(rightCaterpillarWorld);
-        _effect.Parameters["InverseTransposeWorld"].SetValue(Matrix.Transpose(Matrix.Invert(rightCaterpillarWorld)));
-
+        _effect.Parameters["InverseTransposeWorld"]?.SetValue(Matrix.Transpose(Matrix.Invert(rightCaterpillarWorld)));
         _rightCaterpillarMesh.Draw();
     }
 }

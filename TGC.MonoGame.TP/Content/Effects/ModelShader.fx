@@ -8,6 +8,7 @@
 #endif
 
 #include "Lightning.fxh"
+#include "Shadows.fxh"
 
 float4x4 World;
 float4x4 View;
@@ -82,8 +83,9 @@ struct VertexShaderOutput
 {
     float4 Position : SV_POSITION;
     float2 TextureCoordinate : TEXCOORD0;
-    float3 Normal :TEXCOORD1; 
+    float3 Normal : TEXCOORD1; 
     float4 WorldPosition : TEXCOORD2; 
+    float4 LightPosition : TEXCOORD3;
 };
 
 texture ModelTexture;
@@ -154,7 +156,7 @@ VertexShaderOutput MainVS(in VertexShaderInput input)
     output.Position = mul(viewPosition, Projection);
 
     output.WorldPosition = worldPosition;
-
+    output.LightPosition = mul(worldPosition, LightViewProjection);
     output.Normal = mul(input.Normal, (float3x3) InverseTransposeWorld);
 
     output.TextureCoordinate = input.TextureCoordinate;
@@ -190,7 +192,7 @@ VertexShaderOutput DeformedVS(in VertexShaderInput input)
     output.Position = mul(viewPosition, Projection);
 
     output.WorldPosition = worldPosition;
-
+    output.LightPosition = mul(worldPosition, LightViewProjection);
     output.Normal = mul(input.Normal, (float3x3) InverseTransposeWorld);
 
     output.TextureCoordinate = input.TextureCoordinate;
@@ -203,6 +205,9 @@ float4 MainPS(VertexShaderOutput input) : COLOR
     float4 textureColor = tex2D(textureSampler, input.TextureCoordinate + TexturePositions);
 
     float4 finalcolor = CalculateBlinnPhong(input.WorldPosition.xyz, normalize(input.Normal), textureColor);
+
+    float shadow = CalculateShadow(input.LightPosition);
+    finalcolor.rgb *= (1.0 - shadow * 0.7);
 
     return finalcolor;
 }

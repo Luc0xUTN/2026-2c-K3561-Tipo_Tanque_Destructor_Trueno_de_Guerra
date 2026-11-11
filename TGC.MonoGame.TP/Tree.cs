@@ -7,6 +7,8 @@ namespace TGC.MonoGame.TP;
 
 public class Tree : Prop
 {
+    public override bool UsesAlphaTestForShadow => true;
+
     public Tree(Vector3 position, Vector3 scale, Vector3 rotation, float kAmbient, float kDiffuse, float kSpecular, float shininess) 
         : base(position, scale, rotation, kAmbient, kDiffuse, kSpecular, shininess)
     {

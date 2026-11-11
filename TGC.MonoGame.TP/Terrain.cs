@@ -368,11 +368,14 @@ public class Terrain
     }
     
     
-    public void Draw(GraphicsDevice device, BaseCamera camera, Light light, Matrix projection)
+    public void Draw(
+        GraphicsDevice device,
+        BaseCamera camera,
+        Light light,
+        Matrix projection,
+        Matrix? lightViewProjection = null,
+        Texture2D shadowMap = null)
     {
-        device.SetVertexBuffer(_vertices);
-        device.Indices = _indices;
-
         _effect.Parameters["View"].SetValue(camera.GetView());
         _effect.Parameters["Projection"].SetValue(projection);
         _effect.Parameters["World"].SetValue(_world);
@@ -390,6 +393,17 @@ public class Terrain
 
         _effect.Parameters["CameraPosition"].SetValue(camera.Position);
         _effect.Parameters["ModelColor"].SetValue(_color.ToVector3());
+
+        // Sombras
+        if (shadowMap != null && lightViewProjection.HasValue)
+        {
+            _effect.Parameters["LightViewProjection"]?.SetValue(lightViewProjection.Value);
+            _effect.Parameters["ShadowMap"]?.SetValue(shadowMap);
+            _effect.Parameters["ShadowMapTexelSize"]?.SetValue(1.0f / shadowMap.Width);
+        }
+
+        device.SetVertexBuffer(_vertices);
+        device.Indices = _indices;
 
         foreach (var pass in _effect.CurrentTechnique.Passes)
         {

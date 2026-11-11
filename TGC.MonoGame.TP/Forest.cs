@@ -98,7 +98,8 @@ public class Forest
                 }
                 else
                 {
-                    float scaleVariationY = (float)random.NextDouble() * 2;
+                    // Cálculo para que haya una altura mínima de los árboles
+                    float scaleVariationY = 0.8f + (float)random.NextDouble() * 1.5f;
                     float scaleVariationXZ = (float)random.NextDouble() + 1;
                     Vector3 scale = new Vector3(scaleVariationXZ, scaleVariationY, scaleVariationXZ);
 
@@ -158,18 +159,33 @@ public class Forest
 
     }
 
-    public void Draw(GraphicsDevice device, BaseCamera camera, Light light, Matrix projection, BoundingFrustum boundingFrustum)
+    public void Draw(
+        GraphicsDevice device,
+        BaseCamera camera,
+        Light light,
+        Matrix projection,
+        BoundingFrustum boundingFrustum,
+        Matrix? lightViewProjection = null,
+        Texture2D shadowMap = null)
     {
-        _rockEffect.Parameters["Projection"].SetValue(projection);
-        _rockEffect.Parameters["View"].SetValue(camera.GetView());
-        
-        _treeEffect.Parameters["Projection"].SetValue(projection);
-        _treeEffect.Parameters["View"].SetValue(camera.GetView());
-        
         _props.ForEach(prop =>
         {
-            if (boundingFrustum.Intersects(prop.BoundingSphere))
-                prop.Draw(device, camera, projection, light); 
+            if (boundingFrustum == null || boundingFrustum.Intersects(prop.BoundingSphere))
+            {
+                prop.Draw(device, camera, projection, light, lightViewProjection, shadowMap);
+            }
+        });
+    }
+
+    public void DrawShadowPass(
+        GraphicsDevice device,
+        Matrix lightView,
+        Matrix lightProjection,
+        Effect shadowEffect)
+    {
+        _props.ForEach(prop =>
+        {
+            prop.DrawShadowPass(device, lightView, lightProjection, shadowEffect);
         });
     }
 }

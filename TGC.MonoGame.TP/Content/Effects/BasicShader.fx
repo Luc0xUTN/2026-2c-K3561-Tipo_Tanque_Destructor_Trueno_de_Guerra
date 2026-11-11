@@ -8,6 +8,7 @@
 #endif
 
 #include "Lightning.fxh"
+#include "Shadows.fxh"
 
 float4x4 World;
 float4x4 View;
@@ -26,9 +27,10 @@ struct VertexShaderInput
 
 struct VertexShaderOutput
 {
-	float4 Position : SV_POSITION;
-	float3 Normal : TEXCOORD0;
-	float4 WorldPosition : TEXCOORD1;
+    float4 Position : SV_POSITION;
+    float3 Normal : TEXCOORD0;
+    float4 WorldPosition : TEXCOORD1;
+    float4 LightPosition : TEXCOORD2;
 };
 
 VertexShaderOutput MainVS(in VertexShaderInput input)
@@ -42,6 +44,8 @@ VertexShaderOutput MainVS(in VertexShaderInput input)
 	output.Position = mul(viewPosition, Projection);
     
 	output.WorldPosition = worldPosition;    
+
+	output.LightPosition = mul(worldPosition, LightViewProjection);
     
 	output.Normal = mul(input.Normal, (float3x3) InverseTransposeWorld); 
     
@@ -50,8 +54,17 @@ VertexShaderOutput MainVS(in VertexShaderInput input)
 
 float4 MainPS(VertexShaderOutput input) : COLOR
 {
-	float4 finalColor = CalculateBlinnPhong(input.WorldPosition.xyz, normalize(input.Normal), float4(ModelColor, 1.0));
-	return finalColor;
+    float4 finalColor = CalculateBlinnPhong(
+        input.WorldPosition.xyz,
+        normalize(input.Normal),
+        float4(ModelColor, 1.0)
+    );
+
+    float shadow = CalculateShadow(input.LightPosition);
+
+    finalColor.rgb *= (1.0 - shadow * 0.7);
+
+    return finalColor;
 }
 
 technique BasicColorDrawing

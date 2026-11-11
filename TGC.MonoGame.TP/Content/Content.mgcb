@@ -25,6 +25,12 @@
 /processorParam:DebugMode=Auto
 /build:Effects/ModelShader.fx
 
+#begin Effects/ShadowShader.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Effects/ShadowShader.fx
+
 #begin Effects/TreeShader.fx
 /importer:EffectImporter
 /processor:EffectProcessor

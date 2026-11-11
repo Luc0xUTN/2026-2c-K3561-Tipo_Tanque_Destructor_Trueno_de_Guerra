@@ -75,9 +75,14 @@ public class GameScene : Scene
     private Effect _basicEffect;
     private Model _projectileModel;
 
+    private ShadowMapRenderer _shadowMapRenderer;
+    private Effect _shadowEffect;
 
     private BoundingFrustum _boundingFrustum; 
     
+
+    private bool _showShadowMapInHub = false;
+
     public GameScene(Game game)
     {
         _game = game;
@@ -91,6 +96,8 @@ public class GameScene : Scene
         _contentManager = new ContentManager(_game.Services, "Content");
 
         _device = _game.Services.GetService<IGraphicsDeviceService>().GraphicsDevice;
+        _shadowMapRenderer = new ShadowMapRenderer(_device);
+
         if (GameSettings.DebugMode)
             _physicsSystem = new DebugPhysicsSystem(_device);
         else
@@ -112,6 +119,20 @@ public class GameScene : Scene
         }
         _battlefield.AddEntitiesToPhyisicSystem(_physicsSystem);
         
+        var lightDirection = Vector3.Normalize(_sunlight.Position);
+        var mapSize = GameSettings.MapSize;
+        var lightDistance = mapSize * 2f;
+        var lightPosition = lightDirection * lightDistance;
+
+        _shadowMapRenderer.ConfigureLightCamera(
+            lightPosition,
+            Vector3.Zero,
+            mapSize * 1.1f,
+            mapSize * 1.1f,
+            1f,
+            mapSize * 4f
+        );
+
         // El jugador siempre spawnea en el spawn A, sobre la altura real del
         // terreno en ese punto (Battlefield.GetHeightAt).
         var spawnPosition = _battlefield.GetSpawnA();
@@ -207,7 +228,9 @@ public class GameScene : Scene
         }
 
         _basicEffect = _contentManager.Load<Effect>(ContentPaths.ContentFolderEffects + "BasicShader");
+        _shadowEffect = _contentManager.Load<Effect>(ContentPaths.ContentFolderEffects + "ShadowShader");
         Effect modelEffect = _contentManager.Load<Effect>(ContentPaths.ContentFolderEffects + "ModelShader");
+
         // Cada tanque carga el modelo con su propio ContentManager. Si todos
         // comparten uno (como antes), ContentManager cachea el Model por path y
         // los 4 tanques terminan compartiendo los mismos ModelBone de torreta y
@@ -473,35 +496,50 @@ public class GameScene : Scene
 
     public void Draw()
     {
+        var lightView = _shadowMapRenderer.View;
+        var lightProj = _shadowMapRenderer.Projection;
+        var lightVP = _shadowMapRenderer.LightViewProjection;
+        var shadowMap = _shadowMapRenderer.ShadowMap;
+
+        // Render del ShadowMap ----------------------------------------
+        _shadowMapRenderer.BeginShadowPass();
+
+        _battlefield.DrawShadowPass(_device, _sunlight, lightView, lightProj, _shadowEffect);
+
+        _tank.DrawShadowPass(_device, lightView, lightProj, _shadowEffect);
+        _enemyTanks.ForEach(t => t.DrawShadowPass(_device, lightView, lightProj, _shadowEffect));
+        _allyTanks.ForEach(t => t.DrawShadowPass(_device, lightView, lightProj, _shadowEffect));
+
+        _shadowMapRenderer.EndShadowPass();
+
+        // Render Normal -----------------------------------------------
         var view = _camera.GetView();
-        
-        
-        _tank.Draw(_device, _camera, _projection, _sunlight);
-        
 
-        foreach (var enemyTank in _enemyTanks)
-        {
-            enemyTank.Draw(_device, _camera, _projection, _sunlight);
-        }
-
-        foreach (var allyTank in _allyTanks)
-        {
-            allyTank.Draw(_device, _camera, _projection, _sunlight);
-        }
+        _tank.Draw(_device, _camera, _projection, _sunlight, lightVP, shadowMap);
+        _enemyTanks.ForEach(t => t.Draw(_device, _camera, _projection, _sunlight, lightVP, shadowMap));
+        _allyTanks.ForEach(t => t.Draw(_device, _camera, _projection, _sunlight, lightVP, shadowMap));
 
         foreach (var projectile in _projectiles)
         {
             projectile.Draw(_device, view, _projection);
         }
 
-        _battlefield.Draw(_device, _camera, _sunlight,  _projection, _boundingFrustum);
-        
+        _battlefield.Draw(_device, _camera, _sunlight, _projection, _boundingFrustum, lightVP, shadowMap);
+
         if (_physicsSystem is DebugPhysicsSystem)
             ((DebugPhysicsSystem) _physicsSystem).Draw(view, _projection);
         
         DebugManager.Draw(_device, view, _projection);
 
         _hudView.Draw();
+
+        // Preview del Shadow Map en el HUD (para debuggear)
+        if (_showShadowMapInHub)
+        {
+            _spriteBatch.Begin();
+            _spriteBatch.Draw(shadowMap, new Rectangle(10, 10, 400, 400), Color.White);
+            _spriteBatch.End();
+        }
     }
     
     public void SetBattlefield(Battlefield battlefield)
@@ -511,6 +549,9 @@ public class GameScene : Scene
     
     public void Unload()
     {
+        _shadowMapRenderer?.Dispose();
+        _shadowMapRenderer = null;
+
         _contentManager.Unload();   
     }
 

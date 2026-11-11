@@ -168,10 +168,28 @@ public class Battlefield
         _forest.Remove(prop);
     }
 
-    public void Draw(GraphicsDevice device, BaseCamera camera, Light light, Matrix projection, BoundingFrustum boundingFrustum)
+
+    public void Draw(
+        GraphicsDevice device,
+        BaseCamera camera,
+        Light light,
+        Matrix projection,
+        BoundingFrustum boundingFrustum,
+        Matrix? lightViewProjection = null,
+        Texture2D shadowMap = null)
     {
-        _terrain.Draw(device, camera, light, projection);
-        _forest.Draw(device, camera, light, projection, boundingFrustum);
+        _terrain.Draw(device, camera, light, projection, lightViewProjection, shadowMap);
+        _forest.Draw(device, camera, light, projection, boundingFrustum, lightViewProjection, shadowMap);
+    }
+    
+    public void DrawShadowPass(
+        GraphicsDevice device,
+        Light light,
+        Matrix lightView,
+        Matrix lightProjection,
+        Effect shadowEffect)
+    {
+        _forest.DrawShadowPass(device, lightView, lightProjection, shadowEffect);
     }
 
     // Única forma en que el resto del juego (spawn de tanque, más adelante IA)
