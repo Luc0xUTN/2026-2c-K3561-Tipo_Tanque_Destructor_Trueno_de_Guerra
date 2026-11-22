@@ -21,6 +21,9 @@ public static class GameSettings
     // desde un menú de opciones más adelante.
     public static bool FriendlyFireEnabled { get; set; } = true;
     
+    // Distancia máxima desde la cámara del jugador a la que los objetos proyectan sombras en el ShadowMap.
+    public static float MaxShadowDistance { get; set; } = 200f;
+    
     public static float MusicVolumen { get; set; } = 0.0f;
     public static float SoundEffectsVolumen { get; set; } = 0.0f;
 

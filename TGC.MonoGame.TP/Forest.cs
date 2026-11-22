@@ -181,11 +181,17 @@ public class Forest
         GraphicsDevice device,
         Matrix lightView,
         Matrix lightProjection,
-        Effect shadowEffect)
+        Effect shadowEffect,
+        Vector3 cameraPosition)
     {
-        _props.ForEach(prop =>
+        float maxDistanceSq = GameSettings.MaxShadowDistance * GameSettings.MaxShadowDistance;
+
+        foreach (var prop in _props)
         {
-            prop.DrawShadowPass(device, lightView, lightProjection, shadowEffect);
-        });
+            if (Vector3.DistanceSquared(prop.BoundingSphere.Center, cameraPosition) <= maxDistanceSq)
+            {
+                prop.DrawShadowPass(device, lightView, lightProjection, shadowEffect);
+            }
+        }
     }
 }

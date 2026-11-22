@@ -187,9 +187,10 @@ public class Battlefield
         Light light,
         Matrix lightView,
         Matrix lightProjection,
-        Effect shadowEffect)
+        Effect shadowEffect,
+        Vector3 cameraPosition)
     {
-        _forest.DrawShadowPass(device, lightView, lightProjection, shadowEffect);
+        _forest.DrawShadowPass(device, lightView, lightProjection, shadowEffect, cameraPosition);
     }
 
     // Única forma en que el resto del juego (spawn de tanque, más adelante IA)

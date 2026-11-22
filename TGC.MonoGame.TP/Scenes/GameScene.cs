@@ -504,11 +504,23 @@ public class GameScene : Scene
         // Render del ShadowMap ----------------------------------------
         _shadowMapRenderer.BeginShadowPass();
 
-        _battlefield.DrawShadowPass(_device, _sunlight, lightView, lightProj, _shadowEffect);
+        _battlefield.DrawShadowPass(_device, _sunlight, lightView, lightProj, _shadowEffect, _camera.Position);
+
+        float maxShadowDistSq = GameSettings.MaxShadowDistance * GameSettings.MaxShadowDistance;
 
         _tank.DrawShadowPass(_device, lightView, lightProj, _shadowEffect);
-        _enemyTanks.ForEach(t => t.DrawShadowPass(_device, lightView, lightProj, _shadowEffect));
-        _allyTanks.ForEach(t => t.DrawShadowPass(_device, lightView, lightProj, _shadowEffect));
+
+        foreach (var enemy in _enemyTanks)
+        {
+            if (Vector3.DistanceSquared(enemy.GetPosition(), _camera.Position) <= maxShadowDistSq)
+                enemy.DrawShadowPass(_device, lightView, lightProj, _shadowEffect);
+        }
+
+        foreach (var ally in _allyTanks)
+        {
+            if (Vector3.DistanceSquared(ally.GetPosition(), _camera.Position) <= maxShadowDistSq)
+                ally.DrawShadowPass(_device, lightView, lightProj, _shadowEffect);
+        }
 
         _shadowMapRenderer.EndShadowPass();
 
