@@ -770,8 +770,6 @@ public class Tank : Entity
     // Se usa para proyectar sombras
     public void DrawShadowPass(GraphicsDevice graphicsDevice, Matrix lightView, Matrix lightProjection, Effect shadowEffect)
     {
-        shadowEffect.Parameters["View"].SetValue(lightView);
-        shadowEffect.Parameters["Projection"].SetValue(lightProjection);
         shadowEffect.Parameters["UseAlphaTest"]?.SetValue(false);
         shadowEffect.Parameters["ModelTexture"]?.SetValue(_tankTexture);
 

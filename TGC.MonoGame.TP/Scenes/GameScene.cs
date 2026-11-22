@@ -504,6 +504,10 @@ public class GameScene : Scene
         // Render del ShadowMap ----------------------------------------
         _shadowMapRenderer.BeginShadowPass();
 
+        _shadowEffect.Parameters["View"]?.SetValue(lightView);
+        _shadowEffect.Parameters["Projection"]?.SetValue(lightProj);
+        _shadowEffect.Parameters["AlphaThreshold"]?.SetValue(0.1f);
+
         _battlefield.DrawShadowPass(_device, _sunlight, lightView, lightProj, _shadowEffect, _camera.Position);
 
         float maxShadowDistSq = GameSettings.MaxShadowDistance * GameSettings.MaxShadowDistance;

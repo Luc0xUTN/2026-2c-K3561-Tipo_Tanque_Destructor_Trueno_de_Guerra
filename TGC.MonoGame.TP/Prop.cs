@@ -99,12 +99,39 @@ public class Prop : Entity
         Matrix lightProjection,
         Effect shadowEffect)
     {
-        shadowEffect.Parameters["Projection"]?.SetValue(lightProjection);
-        shadowEffect.Parameters["View"]?.SetValue(lightView);
         shadowEffect.Parameters["UseAlphaTest"]?.SetValue(UsesAlphaTestForShadow);
-        shadowEffect.Parameters["AlphaThreshold"]?.SetValue(0.1f);
 
-        RenderMeshesWithEffect(graphicsDevice, shadowEffect);
+        RenderMeshesForShadow(graphicsDevice, shadowEffect);
+    }
+
+    private void RenderMeshesForShadow(GraphicsDevice graphicsDevice, Effect effect)
+    {
+        foreach (var mesh in _model.Meshes)
+        {
+            Matrix meshWorld = mesh.ParentBone.Transform * _world;
+            effect.Parameters["World"]?.SetValue(meshWorld);
+
+            for (int i = 0; i < mesh.MeshParts.Count; i++)
+            {
+                ModelMeshPart part = mesh.MeshParts[i];
+
+                if (i < _textures.Count)
+                {
+                    effect.Parameters["ModelTexture"]?.SetValue(_textures[i]);
+                }
+
+                effect.CurrentTechnique.Passes[0].Apply();
+                graphicsDevice.SetVertexBuffer(part.VertexBuffer);
+                graphicsDevice.Indices = part.IndexBuffer;
+
+                graphicsDevice.DrawIndexedPrimitives(
+                    PrimitiveType.TriangleList,
+                    part.VertexOffset,
+                    part.StartIndex,
+                    part.PrimitiveCount
+                );
+            }
+        }
     }
 
     private void RenderMeshesWithEffect(GraphicsDevice graphicsDevice, Effect effect)
