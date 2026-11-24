@@ -395,12 +395,12 @@ public class Terrain
         _effect.Parameters["ModelColor"].SetValue(_color.ToVector3());
 
         // Sombras
-        if (shadowMap != null && lightViewProjection.HasValue)
-        {
-            _effect.Parameters["LightViewProjection"]?.SetValue(lightViewProjection.Value);
-            _effect.Parameters["ShadowMap"]?.SetValue(shadowMap);
-            _effect.Parameters["ShadowMapTexelSize"]?.SetValue(1.0f / shadowMap.Width);
-        }
+        var effectiveShadowMap = shadowMap ?? ShadowMapDefaults.GetDummyShadowMap(device);
+        var effectiveLvp = lightViewProjection ?? Matrix.Identity;
+
+        _effect.Parameters["LightViewProjection"]?.SetValue(effectiveLvp);
+        _effect.Parameters["ShadowMap"]?.SetValue(effectiveShadowMap);
+        _effect.Parameters["ShadowMapTexelSize"]?.SetValue(1.0f / effectiveShadowMap.Width);
 
         device.SetVertexBuffer(_vertices);
         device.Indices = _indices;

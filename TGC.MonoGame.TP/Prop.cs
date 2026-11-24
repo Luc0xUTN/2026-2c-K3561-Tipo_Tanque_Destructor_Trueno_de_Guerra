@@ -78,12 +78,12 @@ public class Prop : Entity
 
         _effect.Parameters["CameraPosition"]?.SetValue(camera.Position);
 
-        if (shadowMap != null && lightViewProjection.HasValue)
-        {
-            _effect.Parameters["LightViewProjection"]?.SetValue(lightViewProjection.Value);
-            _effect.Parameters["ShadowMap"]?.SetValue(shadowMap);
-            _effect.Parameters["ShadowMapTexelSize"]?.SetValue(1.0f / shadowMap.Width);
-        }
+        var effectiveShadowMap = shadowMap ?? ShadowMapDefaults.GetDummyShadowMap(graphicsDevice);
+        var effectiveLvp = lightViewProjection ?? Matrix.Identity;
+
+        _effect.Parameters["LightViewProjection"]?.SetValue(effectiveLvp);
+        _effect.Parameters["ShadowMap"]?.SetValue(effectiveShadowMap);
+        _effect.Parameters["ShadowMapTexelSize"]?.SetValue(1.0f / effectiveShadowMap.Width);
 
         DrawMeshes(graphicsDevice);
     }

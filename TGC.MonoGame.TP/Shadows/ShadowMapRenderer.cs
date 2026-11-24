@@ -80,3 +80,18 @@ public class ShadowMapRenderer : IDisposable
         _shadowMap?.Dispose();
     }
 }
+
+public static class ShadowMapDefaults
+{
+    private static Texture2D _dummyShadowMap;
+
+    public static Texture2D GetDummyShadowMap(GraphicsDevice device)
+    {
+        if (_dummyShadowMap == null || _dummyShadowMap.IsDisposed || _dummyShadowMap.GraphicsDevice != device)
+        {
+            _dummyShadowMap = new Texture2D(device, 1, 1);
+            _dummyShadowMap.SetData(new[] { Color.White });
+        }
+        return _dummyShadowMap;
+    }
+}
