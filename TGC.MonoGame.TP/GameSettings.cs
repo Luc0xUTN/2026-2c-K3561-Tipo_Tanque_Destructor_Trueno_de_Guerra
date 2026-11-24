@@ -24,8 +24,8 @@ public static class GameSettings
     // Distancia máxima desde la cámara del jugador a la que los objetos proyectan sombras en el ShadowMap.
     public static float MaxShadowDistance { get; set; } = 200f;
     
-    public static float MusicVolumen { get; set; } = 0.0f;
-    public static float SoundEffectsVolumen { get; set; } = 0.0f;
+    public static float MusicVolumen { get; set; } = 0.5f;
+    public static float SoundEffectsVolumen { get; set; } = 0.2f;
 
     public static EventHandler GetMusicAdder(float value)
     {
