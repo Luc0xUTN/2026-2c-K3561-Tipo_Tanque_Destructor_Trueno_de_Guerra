@@ -19,6 +19,8 @@ public class Button
         private bool _isPressed;
 
         public bool IsCentered { get; private set; }
+        public Vector2 Position { get; private set; }
+        public Rectangle Bounds => _bounds;
         public event EventHandler Click;
 
         public Button(SpriteFont font, string text, Vector2 position, bool isCentered = false)
@@ -42,8 +44,27 @@ public class Button
             _previousMouseState = Mouse.GetState();
         }
 
+        public void SetPosition(Vector2 position)
+        {
+            Vector2 size;
+            if (_icon != null)
+            {
+                size = new Vector2(_bounds.Width, _bounds.Height);
+            }
+            else if (_font != null && !string.IsNullOrEmpty(_text))
+            {
+                size = _font.MeasureString(_text);
+            }
+            else
+            {
+                size = new Vector2(_bounds.Width, _bounds.Height);
+            }
+            CalculateBounds(position, size);
+        }
+
         private void CalculateBounds(Vector2 position, Vector2 size)
         {
+            Position = position;
             int x = (int)position.X;
             int y = (int)position.Y;
 
@@ -54,7 +75,8 @@ public class Button
             }
 
             _bounds = new Rectangle(x, y, (int)size.X, (int)size.Y);
-            _currentColor = _normalColor;
+            if (_currentColor == default)
+                _currentColor = _normalColor;
         }
 
         public void Update()

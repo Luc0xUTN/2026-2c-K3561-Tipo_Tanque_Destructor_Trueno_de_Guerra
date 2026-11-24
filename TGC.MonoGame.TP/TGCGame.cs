@@ -13,8 +13,9 @@ namespace TGC.MonoGame.TP;
 public class TGCGame : Game
 {
     private readonly GraphicsDeviceManager _graphics;
-    
     private Scene _scene;
+    private KeyboardState _previousKeyboardState;
+    private bool _isResizing;
     
     /// <summary>
     ///     Constructor del juego.
@@ -24,14 +25,54 @@ public class TGCGame : Game
         // Maneja la configuracion y la administracion del dispositivo grafico.
         _graphics = new GraphicsDeviceManager(this);
 
-        _graphics.PreferredBackBufferWidth = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width - 100;
-        _graphics.PreferredBackBufferHeight = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height - 100;
-        // Para que el juego sea pantalla completa se puede usar Graphics IsFullScreen.
+        // Modo pantalla completa por defecto con resolucion nativa del monitor
+        _graphics.PreferredBackBufferWidth = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width;
+        _graphics.PreferredBackBufferHeight = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height;
+        _graphics.IsFullScreen = true;
+        _graphics.HardwareModeSwitch = false;
+        _graphics.ApplyChanges();
+
+        Window.AllowUserResizing = true;
+        Window.ClientSizeChanged += OnClientSizeChanged;
+
         // Carpeta raiz donde va a estar toda la Media.
         Content.RootDirectory = "Content";
-
         
         _scene = new MenuScene(this); 
+    }
+
+    private void OnClientSizeChanged(object sender, EventArgs e)
+    {
+        if (_isResizing) return;
+        if (!_graphics.IsFullScreen && Window.ClientBounds.Width > 0 && Window.ClientBounds.Height > 0)
+        {
+            if (_graphics.PreferredBackBufferWidth != Window.ClientBounds.Width ||
+                _graphics.PreferredBackBufferHeight != Window.ClientBounds.Height)
+            {
+                _isResizing = true;
+                _graphics.PreferredBackBufferWidth = Window.ClientBounds.Width;
+                _graphics.PreferredBackBufferHeight = Window.ClientBounds.Height;
+                _graphics.ApplyChanges();
+                _isResizing = false;
+            }
+        }
+    }
+
+    public void ToggleFullScreen()
+    {
+        _graphics.IsFullScreen = !_graphics.IsFullScreen;
+        if (_graphics.IsFullScreen)
+        {
+            _graphics.PreferredBackBufferWidth = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width;
+            _graphics.PreferredBackBufferHeight = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height;
+            _graphics.HardwareModeSwitch = false;
+        }
+        else
+        {
+            _graphics.PreferredBackBufferWidth = 1280;
+            _graphics.PreferredBackBufferHeight = 720;
+        }
+        _graphics.ApplyChanges();
     }
 
     /// <summary>
@@ -71,6 +112,12 @@ public class TGCGame : Game
         {
             Exit();
         }
+
+        if (keyboardState.IsKeyDown(Keys.F11) && !_previousKeyboardState.IsKeyDown(Keys.F11))
+        {
+            ToggleFullScreen();
+        }
+        _previousKeyboardState = keyboardState;
         
         var elapsedTime = Convert.ToSingle(gameTime.ElapsedGameTime.TotalSeconds);
 

@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Numerics;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using TGC.MonoGame.TP.scenes;
 using TGC.MonoGame.TP.Utils;
@@ -19,6 +19,9 @@ public class ConfigurationView : View
     
     private Button _musicUpBtn;
     private Button _musicDownBtn;
+
+    private int _lastViewportWidth;
+    private int _lastViewportHeight;
     
     public ConfigurationView(View previousView, GraphicsDevice device, MenuScene menuScene, SpriteFont font, SpriteBatch spriteBatch)
     {
@@ -31,26 +34,43 @@ public class ConfigurationView : View
     
     public void Initialize()
     {
-        int centerX = _device.Viewport.Width / 2;
-        int centerY = _device.Viewport.Height / 2;
-        
-        _backBtn = new Button(_font, "< Atras", new Vector2(0,0), false);
+        _backBtn = new Button(_font, "< Atras", Vector2.Zero, false);
         _backBtn.Click += _menuScene.GetSetView(_previousView);
+
+        _musicUpBtn = new Button(_font, "+", Vector2.Zero, true);
+        _musicDownBtn = new Button(_font, "-", Vector2.Zero, true);
+
+        UpdateLayout();
+    }
+
+    public void UpdateLayout()
+    {
+        int width = _device.Viewport.Width;
+        int height = _device.Viewport.Height;
+        if (width == _lastViewportWidth && height == _lastViewportHeight)
+            return;
+
+        _lastViewportWidth = width;
+        _lastViewportHeight = height;
+
+        int margin = Math.Clamp((int)(width * 0.025f), 20, 50);
+        _backBtn.SetPosition(new Vector2(margin, margin));
+
+        int centerX = width / 2;
+        int centerY = height / 2;
 
         Vector2 basePosition = new Vector2(centerX, centerY - 100);
         int numberEntries = 2;
         var labelsPosition = UI.GenerateElementsPosition(basePosition, 0, 100, numberEntries);
         
-        var musicPositions =  UI.GenerateElementsPosition(labelsPosition[0], 50, 0, 3);
-        _musicUpBtn = new Button(_font, "+",  musicPositions[0], true);
-        // _musicUpBtn.Click += GameSettings.GetMusicAdder(0.1f);
-        
-        _musicDownBtn = new  Button(_font, "-", musicPositions[2], true);
-        // _musicDownBtn.Click += GameSettings.GetMusicAdder(0.1f);
+        var musicPositions = UI.GenerateElementsPosition(labelsPosition[0], 50, 0, 3);
+        _musicUpBtn.SetPosition(musicPositions[0]);
+        _musicDownBtn.SetPosition(musicPositions[2]);
     }
 
     public void Update()
     {
+        UpdateLayout();
         _backBtn.Update();
     }
 

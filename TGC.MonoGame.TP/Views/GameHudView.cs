@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -40,6 +41,8 @@ public class GameHudView
     private bool _isGameOver;
     private Texture2D _pixel;
 
+    private int _lastViewportWidth;
+    private int _lastViewportHeight;
 
     public GameHudView(GraphicsDevice device, SpriteFont font, SpriteBatch spriteBatch, Texture2D pixel, PlayerTank playerTank, List<AITank> enemyTanks, List<AITank> allyTanks, BaseCamera camera, Matrix projection)
     {
@@ -53,43 +56,65 @@ public class GameHudView
         _projection = projection;
         _pixel = pixel;
 
-        var barPosition = new Vector2(Margin, _device.Viewport.Height - Margin - BarHeight);
-        _healthBar = new HealthBar(pixel, barPosition, BarWidth, BarHeight);
+        _healthBar = new HealthBar(pixel, Vector2.Zero, BarWidth, BarHeight);
+        _enemyCountLabel = new Label(_font, "", Vector2.Zero);
+        _allyCountLabel = new Label(_font, "", Vector2.Zero);
+        _reloadBar = new HealthBar(pixel, Vector2.Zero, BarWidth, 10, Color.DarkSlateGray, Color.Cyan);
+        _timerLabel = new Label(_font, "", Vector2.Zero, true);
+        _godModeLabel = new Label(_font, "GODMODE", Vector2.Zero) { TextColor = Color.Yellow };
+        _resultTitleLabel = new Label(_font, "", Vector2.Zero, true);
+        _resultSubtitleLabel = new Label(_font, "", Vector2.Zero, true);
 
-        // Apilados hacia arriba desde la barra de vida, separados por el alto
-        // real de una línea de este font (_font.LineSpacing) más un margen --
-        // un número fijo (30) quedaba más chico que el texto renderizado y
-        // las dos etiquetas se superponían.
-        var lineHeight = _font.LineSpacing + 6;
-        var labelPosition = new Vector2(Margin, barPosition.Y - lineHeight);
-        _enemyCountLabel = new Label(_font, "", labelPosition);
+        UpdateLayout();
+    }
 
-        var allyLabelPosition = new Vector2(Margin, labelPosition.Y - lineHeight);
-        _allyCountLabel = new Label(_font, "", allyLabelPosition);
+    public void SetProjection(Matrix projection)
+    {
+        _projection = projection;
+    }
 
-        // Barra de reload, apilada arriba de todo lo anterior -- no es texto,
-        // así que el gap no depende de LineSpacing, un margen fijo chico alcanza.
-        const int reloadBarHeight = 10;
-        const int reloadBarGap = 10;
-        var reloadBarPosition = new Vector2(Margin, allyLabelPosition.Y - reloadBarHeight - reloadBarGap);
-        _reloadBar = new HealthBar(pixel, reloadBarPosition, BarWidth, reloadBarHeight, Color.DarkSlateGray, Color.Cyan);
+    public void UpdateLayout()
+    {
+        int width = _device.Viewport.Width;
+        int height = _device.Viewport.Height;
+        if (width == _lastViewportWidth && height == _lastViewportHeight)
+            return;
 
-        // Timer, centrado arriba -- la X se recalcula en base al viewport
-        // (Width/2), no es una posición de pantalla fija.
-        // IsCentered centra el texto en los DOS ejes alrededor de Position (no
-        // solo el horizontal) -- con Y = Margin directamente, la mitad de
-        // arriba del texto quedaba dibujada por encima del borde de pantalla
-        // y se recortaba. Sumando medio LineSpacing, Position.Y pasa a ser el
-        // centro vertical del texto, y su borde superior cae justo en Margin.
-        var timerPosition = new Vector2(_device.Viewport.Width / 2f, Margin + _font.LineSpacing / 2f);
-        _timerLabel = new Label(_font, "", timerPosition, true);
+        _lastViewportWidth = width;
+        _lastViewportHeight = height;
 
-        var godModePosition = new Vector2(Margin, Margin);
-        _godModeLabel = new Label(_font, "GODMODE", godModePosition) { TextColor = Color.Yellow };
+        int margin = Math.Clamp((int)(width * 0.015f), 16, 32);
+        int barWidth = Math.Clamp((int)(width * 0.16f), 200, 360);
+        int barHeight = Math.Clamp((int)(height * 0.03f), 20, 32);
 
-        var center = new Vector2(_device.Viewport.Width / 2f, _device.Viewport.Height / 2f);
-        _resultTitleLabel = new Label(_font, "", center - new Vector2(0, 40), true);
-        _resultSubtitleLabel = new Label(_font, "", center + new Vector2(0, 20), true);
+        var barPosition = new Vector2(margin, height - margin - barHeight);
+        _healthBar.Position = barPosition;
+        _healthBar.Width = barWidth;
+        _healthBar.Height = barHeight;
+
+        var lineHeight = _font.LineSpacing + Math.Max(4, (int)(height * 0.006f));
+        var labelPosition = new Vector2(margin, barPosition.Y - lineHeight);
+        _enemyCountLabel.Position = labelPosition;
+
+        var allyLabelPosition = new Vector2(margin, labelPosition.Y - lineHeight);
+        _allyCountLabel.Position = allyLabelPosition;
+
+        int reloadBarHeight = Math.Max(8, (int)(barHeight * 0.42f));
+        int reloadBarGap = Math.Max(6, (int)(barHeight * 0.35f));
+        var reloadBarPosition = new Vector2(margin, allyLabelPosition.Y - reloadBarHeight - reloadBarGap);
+        _reloadBar.Position = reloadBarPosition;
+        _reloadBar.Width = barWidth;
+        _reloadBar.Height = reloadBarHeight;
+
+        var timerPosition = new Vector2(width / 2f, margin + _font.LineSpacing / 2f);
+        _timerLabel.Position = timerPosition;
+
+        var godModePosition = new Vector2(margin, margin);
+        _godModeLabel.Position = godModePosition;
+
+        var center = new Vector2(width / 2f, height / 2f);
+        _resultTitleLabel.Position = center - new Vector2(0, 40);
+        _resultSubtitleLabel.Position = center + new Vector2(0, 20);
     }
 
     public void Initialize()
@@ -100,6 +125,7 @@ public class GameHudView
 
     public void Update(float matchTimeRemaining)
     {
+        UpdateLayout();
         _healthBar.Ratio = _playerTank.HealthRatio;
         _enemyCountLabel.Text = $"Enemigos: {_enemyTanks.Count}/{_initialEnemyCount}";
         _allyCountLabel.Text = $"Aliados: {_allyTanks.Count}/{_initialAllyCount}";

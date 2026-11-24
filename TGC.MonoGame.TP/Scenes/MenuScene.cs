@@ -33,8 +33,9 @@ public class MenuScene : Scene
     public bool FlTransition { get => _flTransition; set =>  _flTransition = value ;}
     
     private Light _sunlight = new Light(); 
+    private int _lastViewportWidth;
+    private int _lastViewportHeight;
 
-    
     public MenuScene(Game game)
     {
         _game = game; 
@@ -81,6 +82,16 @@ public class MenuScene : Scene
 
     public void Update(float elapsedTime)
     {
+        int width = _device.Viewport.Width;
+        int height = _device.Viewport.Height;
+        if (width != _lastViewportWidth || height != _lastViewportHeight)
+        {
+            _lastViewportWidth = width;
+            _lastViewportHeight = height;
+            int farPlaneDistance = (int)Math.Ceiling(Math.Sqrt(Math.Pow(GameSettings.MapSize, 2) + Math.Pow(GameSettings.MapSize, 2))); 
+            _projection = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, _device.Viewport.AspectRatio, 1, farPlaneDistance);
+        }
+
         _view.Update();
         _camera.Update(elapsedTime);
         

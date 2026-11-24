@@ -79,9 +79,9 @@ public class GameScene : Scene
     private Effect _shadowEffect;
 
     private BoundingFrustum _boundingFrustum; 
-    
-
     private bool _showShadowMapInHub = false;
+    private int _lastViewportWidth;
+    private int _lastViewportHeight;
 
     public GameScene(Game game)
     {
@@ -324,6 +324,21 @@ public class GameScene : Scene
 
     public void Update(float elapsedTime)
     {
+        int width = _device.Viewport.Width;
+        int height = _device.Viewport.Height;
+        if (width != _lastViewportWidth || height != _lastViewportHeight)
+        {
+            _lastViewportWidth = width;
+            _lastViewportHeight = height;
+            _centerX = width / 2;
+            _centerY = height / 2;
+            (_camera as OrbitalCamera)?.SetCenter(_centerX, _centerY);
+
+            int farPlaneDistance = (int)Math.Ceiling(Math.Sqrt(Math.Pow(GameSettings.MapSize, 2) + Math.Pow(GameSettings.MapSize, 2)));
+            _projection = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, _device.Viewport.AspectRatio, 1, farPlaneDistance);
+            _hudView?.SetProjection(_projection);
+        }
+
         // Partida ya terminada: ni tanques ni IA ni física se tocan más
         // (quedan congelados tal como estaban cuando se disparó el
         // resultado). Lo único que puede pasar acá es que el jugador
@@ -552,8 +567,9 @@ public class GameScene : Scene
         // Preview del Shadow Map en el HUD (para debuggear)
         if (_showShadowMapInHub)
         {
+            int previewSize = Math.Min(400, Math.Min(_device.Viewport.Width / 3, _device.Viewport.Height / 3));
             _spriteBatch.Begin();
-            _spriteBatch.Draw(shadowMap, new Rectangle(10, 10, 400, 400), Color.White);
+            _spriteBatch.Draw(shadowMap, new Rectangle(10, 10, previewSize, previewSize), Color.White);
             _spriteBatch.End();
         }
     }

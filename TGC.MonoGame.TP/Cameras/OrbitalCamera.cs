@@ -44,8 +44,8 @@ public class OrbitalCamera : BaseCamera
 
     private readonly float _radius;
 
-    private readonly float _centerX;
-    private readonly float _centerY;
+    private float _centerX;
+    private float _centerY;
 
     // Permite consultar la altura real del terreno para no dejar que la cámara lo atraviese.
     private readonly Func<float, float, float> _getTerrainHeight;
@@ -150,5 +150,11 @@ public class OrbitalCamera : BaseCamera
     public void SetSensitivity(float sensitivity)
     {
         this._sensitivity = sensitivity;
+    }
+
+    public void SetCenter(float centerX, float centerY)
+    {
+        _centerX = centerX;
+        _centerY = centerY;
     }
 }

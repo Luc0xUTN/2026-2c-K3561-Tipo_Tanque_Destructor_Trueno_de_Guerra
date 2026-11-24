@@ -1,8 +1,5 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using ImGuiNET;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using TGC.MonoGame.TP.scenes;
@@ -31,7 +28,9 @@ public class HowToPlayView : View
         "Mover la camara sin la torreta presionar tecla C"
     };
 
-    private Button _backBtn; 
+    private Button _backBtn;
+    private int _lastViewportWidth;
+    private int _lastViewportHeight;
     
     public HowToPlayView(View previousView, GraphicsDevice device, MenuScene menuScene, SpriteFont font, SpriteBatch spriteBatch)
     {
@@ -42,29 +41,49 @@ public class HowToPlayView : View
         _spriteBatch = spriteBatch;
     }
     
-    
     public void Initialize()
     {
-        int centerX = _device.Viewport.Width / 2;
-        int centerY = _device.Viewport.Height / 2; 
+        _labels.Clear();
+        foreach (var ls in _labelsStr)
+        {
+            _labels.Add(new Label(_font, ls, Vector2.Zero, true));
+        }
 
-        Vector2 basePosition = new Vector2(centerX, centerY - 250);
-        int padding = 100;
-        int numberElements = 6;
-
-        var position = UI.GenerateElementsPosition(basePosition, 0, padding, numberElements);
-        position.Reverse(); 
-        
-        var positionsStack = new Stack<Vector2>(position);
-        
-        _labelsStr.ForEach(ls => _labels.Add(new Label(_font, ls, positionsStack.Pop(), true)));
-
-        _backBtn = new Button(_font, "< Atras", new Vector2(0,0), false);
+        _backBtn = new Button(_font, "< Atras", Vector2.Zero, false);
         _backBtn.Click += _menuScene.GetSetView(_previousView);
+
+        UpdateLayout();
+    }
+
+    public void UpdateLayout()
+    {
+        int width = _device.Viewport.Width;
+        int height = _device.Viewport.Height;
+        if (width == _lastViewportWidth && height == _lastViewportHeight)
+            return;
+
+        _lastViewportWidth = width;
+        _lastViewportHeight = height;
+
+        int margin = Math.Clamp((int)(width * 0.025f), 20, 50);
+        _backBtn.SetPosition(new Vector2(margin, margin));
+
+        int centerX = width / 2;
+        int centerY = height / 2;
+
+        int lineSpacing = Math.Clamp((int)(height * 0.07f), _font.LineSpacing + 8, _font.LineSpacing + 35);
+        float totalHeight = (_labels.Count - 1) * lineSpacing;
+        float startY = centerY - (totalHeight / 2f) + (margin / 3f);
+
+        for (int i = 0; i < _labels.Count; i++)
+        {
+            _labels[i].Position = new Vector2(centerX, startY + i * lineSpacing);
+        }
     }
 
     public void Update()
     {
+        UpdateLayout();
         _backBtn.Update();
     }
 
