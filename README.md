@@ -22,7 +22,10 @@ Los recursos usados se almacenan utilizando [Git LFS](https://git-lfs.github.com
 
 TGC, Tgcito  |  Apellido, Nombre
 ------------ | -------------
-| <img src="https://github.com/tgc-utn/tgc-utn.github.io/blob/main/images/robotgc.png" height="500"> | Crespo, Lucas Felipe <br> Rafael, Manuel José <br> Annetta, Dante <br> Becerra, José Luis |
+| <img src="./equipo/Lucas.jpeg" height="100" width="100"> | Crespo, Lucas Felipe |
+| <img src="./equipo/Manuel.jpg" height="100" width="100"> | Rafael, Manuel José |
+| <img src="./equipo/Dante.jpeg" height="100" width="100"> | Annetta, Dante |
+| <img src="./equipo/José.jpeg" height="100" width="100"> | Becerra, José Luis |
 
 ## Capturas
 
