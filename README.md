@@ -22,16 +22,14 @@ Los recursos usados se almacenan utilizando [Git LFS](https://git-lfs.github.com
 
 TGC, Tgcito  |  Apellido, Nombre
 ------------ | -------------
-| <img src="https://github.com/tgc-utn/tgc-utn.github.io/blob/main/images/robotgc.png" height="500"> | Crespo, Lucas Felipe <br> Rafael, Manuel José <br> Annetta, Dante <br> Becerra, José Luis <br> Neme, Franco Ignacio |
+| <img src="https://github.com/tgc-utn/tgc-utn.github.io/blob/main/images/robotgc.png" height="500"> | Crespo, Lucas Felipe <br> Rafael, Manuel José <br> Annetta, Dante <br> Becerra, José Luis |
 
 ## Capturas
 
-![screenshot1](https://github.com/tgc-utn/tgc-monogame-tp/blob/master/TGC.MonoGame.TP/Icon.bmp)
-![screenshot2](https://github.com/tgc-utn/tgc-monogame-tp/blob/master/TGC.MonoGame.TP/Icon.bmp)
-![screenshot3](https://github.com/tgc-utn/tgc-monogame-tp/blob/master/TGC.MonoGame.TP/Icon.bmp)
-![screenshot4](https://github.com/tgc-utn/tgc-monogame-tp/blob/master/TGC.MonoGame.TP/Icon.bmp)
-![screenshot5](https://github.com/tgc-utn/tgc-monogame-tp/blob/master/TGC.MonoGame.TP/Icon.bmp)
+![screenshot1](./screenshots/1.png)
+![screenshot2](./screenshots/2.png)
+![screenshot3](./screenshots/3.png)
 
 ## Game Play
 
-[![Watch the video](https://img.youtube.com/vi/pgEwUC0jvH4/0.jpg)](https://www.youtube.com/playlist?list=PLRM4L32DjvnazuMl8wZlbpEYL5Qh63ulG)
+[![Demostración del proyecto](https://img.youtube.com/vi/rQMrKfY5DQw/maxresdefault.jpg)](https://www.youtube.com/watch?v=rQMrKfY5DQw)
